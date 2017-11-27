@@ -9,6 +9,10 @@
 #import <AVFoundation/AVFoundation.h>
 #import <Accelerate/Accelerate.h>
 #import "ViewController.h"
+//#import "SYSunnyMovieGLView.h"
+#import "SY3DObjView.h"
+
+
 
 #define Color [UIColor colorWithRed:237/255.0 green:82/255.0 blue:41/255.0 alpha:1]
 
@@ -16,6 +20,10 @@
 <
  AVCaptureVideoDataOutputSampleBufferDelegate
 >
+{
+//    SYSunnyMovieGLView *_glview;
+    SY3DObjView *_objView;
+}
 @property (nonatomic, strong) AVCaptureSession *session;
 @property (nonatomic, strong) AVCaptureDeviceInput *input;
 @property (nonatomic, strong) AVCaptureVideoDataOutput *output;
@@ -32,9 +40,37 @@
     [super viewDidLoad];
     // Do any additional setup after loading the view, typically from a nib.
     
-    [self createCamera];
-    [self createScanPreviewView];
-//    [self drawScanFrame];
+//    [self createCamera];
+//    [self createScanPreviewView];
+    
+    [self create3DView];
+}
+
+- (void)create3DView
+{
+    CGFloat sizeX = ([UIScreen mainScreen].bounds.size.width - 60*2 );
+    CGRect centerRect1 = CGRectMake(60, [UIScreen mainScreen].bounds.size.height / 4.0 - sizeX / 2.0, sizeX, sizeX);
+    
+//    _glview = [[SYSunnyMovieGLView alloc] initWithFrame:centerRect1 dataSourceType:DataSourceTypeYUV420];
+//    [self.view insertSubview:_glview atIndex:0];
+//    [_glview isMotionWithUsing:NO];
+    
+    _objView = [[SY3DObjView alloc] initWithFrame:self.view.frame];
+    [self.view insertSubview:_objView atIndex:0];
+    
+    
+}
+
+- (void)viewDidAppear:(BOOL)animated
+{
+//    CGFloat sizeX = ([UIScreen mainScreen].bounds.size.width - 60*2 );
+//    CGRect centerRect1 = CGRectMake(60, [UIScreen mainScreen].bounds.size.height / 4.0 - sizeX / 2.0, sizeX, sizeX);
+    
+//    [_glview displayReloadTransformInfo:95.0 X:0.50 Y:0.6];
+//
+//    [_glview displayData:nil width:centerRect1.size.width height:centerRect1.size.height];
+    
+    [_objView reloadObjData];
 }
 
 - (void)matrix
@@ -46,10 +82,10 @@
     float v[] = {4.0, 5.0};
     float s = 3.0;
     
-    vDSP_vsaddD(v, 1, &s, &vsresult, 1, vDSP_Length(v.count))
-    vsresult    // returns [7.0, 8.0]
+//    vDSP_vsaddD(v, 1, &s, &vsresult, 1, vDSP_Length(v.count))
+//    vsresult    // returns [7.0, 8.0]
     
-    vDSP_vsubD(m1, 1, m2, 1, 1, 1, 1);
+//    vDSP_vsubD(m1, 1, m2, 1, 1, 1, 1);
     
 }
 

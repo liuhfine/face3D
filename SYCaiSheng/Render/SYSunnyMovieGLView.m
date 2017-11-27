@@ -15,6 +15,7 @@
 //#include <sys/time.h>
 #import <GLKit/GLKit.h>
 #import "shaders.h"
+#import "facegen.h"
 
 /**************************** renderers *******************************/
 #pragma mark - frame renderers
@@ -561,25 +562,25 @@ GLint uniforms[NUM_UNIFORMS];
     GLfloat *vTextCoord = NULL;
     GLushort *indices = NULL;
     
-    int numVertices = 0;
-    self.numIndices = esGenSphere(SphereSliceNum, SphereRadius, &vVertices, &vTextCoord, &indices, &numVertices);
+//    int numVertices = 0;
+//    self.numIndices = esGenSphere(SphereSliceNum, SphereRadius, &vVertices, &vTextCoord, &indices, &numVertices);
     
     //Indices 加载顶点索引数据
     glGenBuffers(1, &_vertexIndicesBufferID);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, self.vertexIndicesBufferID);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, self.numIndices*sizeof(GLushort), indices, GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, facegenNumVerts*sizeof(GLushort), facegenNormals, GL_STATIC_DRAW);
     
     // Vertex 加载顶点坐标
     glGenBuffers(1, &_vertexBufferID);
     glBindBuffer(GL_ARRAY_BUFFER, self.vertexBufferID);
-    glBufferData(GL_ARRAY_BUFFER, numVertices*3*sizeof(GLfloat), vVertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, facegenNumVerts*3*sizeof(GLfloat), facegenVerts, GL_STATIC_DRAW);
     glEnableVertexAttribArray(ATTRIB_VERTEX);
     glVertexAttribPointer(ATTRIB_VERTEX, 3, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*3, NULL);
     
     // Texture Coordinates 加载纹理坐标
     glGenBuffers(1, &_vertexTexCoordID);
     glBindBuffer(GL_ARRAY_BUFFER, self.vertexTexCoordID);
-    glBufferData(GL_ARRAY_BUFFER, numVertices*2*sizeof(GLfloat), vTextCoord, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, facegenNumVerts*2*sizeof(GLfloat), facegenTexCoords, GL_DYNAMIC_DRAW);
     glEnableVertexAttribArray(ATTRIB_TEXTURE);
     glVertexAttribPointer(ATTRIB_TEXTURE, 2, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*2, NULL);
     
@@ -636,7 +637,7 @@ GLint uniforms[NUM_UNIFORMS];
         else
             _renderer = [[SYMovieGLRenderer_RGB alloc] init];
         
-        self.reviewMode = ReviewModePanorama;
+        self.reviewMode = ReviewModeNormal;
         
         if (![self doInit])
         {
@@ -645,23 +646,20 @@ GLint uniforms[NUM_UNIFORMS];
         self.overture = DEFAULT_OVERTURE;
     }
     return self;
-    
-    
 }
 
 - (void)layoutSubviews
 {
-    dispatch_async(dispatch_get_global_queue(0, 0), ^{
-        @synchronized(self)
-        {
+//    dispatch_async(dispatch_get_global_queue(0, 0), ^{
+//        @synchronized(self)
+//        {
             [EAGLContext setCurrentContext:_glContext];
             [self destoryFrameAndRenderBuffer];
             [self createFrameAndRenderBuffer];
-        }
-        
-//        glViewport(1, 1, self.bounds.size.width*_viewScale - 2, self.bounds.size.height*_viewScale - 2);
-        glViewport(0, 0, self.bounds.size.width*2, self.bounds.size.height*2);
-    });
+//        }
+//    });
+    
+    glViewport(0, 0, self.bounds.size.width*2, self.bounds.size.height*2);
 }
 
 - (void)setupYUVTexture
@@ -736,13 +734,14 @@ GLint uniforms[NUM_UNIFORMS];
     
     glViewport(0, 0, self.bounds.size.width*2, self.bounds.size.height*2);
     
-//    [self updateInfo]; // 视口变换
+    [self updateInfo]; // 视口变换
     
     // Draw
     if (self.reviewMode == ReviewModeAsteroid)
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     else
-        glDrawElements(GL_TRIANGLES, self.numIndices, GL_UNSIGNED_SHORT, 0);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, facegenNumVerts);
+//        glDrawElements(GL_TRIANGLES, facegenNumVerts, GL_UNSIGNED_SHORT, 0);
 
     glBindRenderbuffer(GL_RENDERBUFFER, _renderBuffer);
     [_glContext presentRenderbuffer:GL_RENDERBUFFER];
@@ -769,7 +768,7 @@ GLint uniforms[NUM_UNIFORMS];
         if (self.reviewMode == ReviewModeNormal) {
             
             modelViewMatrix = GLKMatrix4MakeTranslation(0.0f, 0.0f, -6.0f);
-            float scale = 3.0;
+            float scale = 12.0;
             modelViewMatrix = GLKMatrix4Scale(modelViewMatrix, scale, scale, scale); //缩放
             
             float aspect = fabs(self.bounds.size.width / self.bounds.size.height);
@@ -1077,6 +1076,18 @@ GLint uniforms[NUM_UNIFORMS];
     }
 }
 
+- (void)reloadObjData
+{
+    if (!self.window)
+    {
+        return;
+    }
+    @synchronized(self)
+    {
+        [self render];
+    }
+}
+
 - (void)displayData:(void *)data width:(NSInteger)w height:(NSInteger)h
 {
     if (!self.window)
@@ -1105,27 +1116,27 @@ GLint uniforms[NUM_UNIFORMS];
         }
         else
         {
-            if (w != _videoW || h != _videoH)
-            {
-                _videoW = (GLuint)w;
-                _videoH = (GLuint)h;
-                
-                [self setVideoSize:_videoW height:_videoH];
-            }
-            [EAGLContext setCurrentContext:_glContext];
-            
-            glBindTexture(GL_TEXTURE_2D, _textureYUV[TEXY]);
-            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, _videoW, _videoH, GL_RED_EXT, GL_UNSIGNED_BYTE, data);
-            
-            //[self debugGlError];
-            
-            glBindTexture(GL_TEXTURE_2D, _textureYUV[TEXU]);
-            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, _videoW/2, _videoH/2, GL_RED_EXT, GL_UNSIGNED_BYTE, (unsigned char*)data + w * h);
-            
-            // [self debugGlError];
-            
-            glBindTexture(GL_TEXTURE_2D, _textureYUV[TEXV]);
-            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, _videoW/2, _videoH/2, GL_RED_EXT, GL_UNSIGNED_BYTE, (unsigned char*)data + w * h * 5 / 4);
+//            if (w != _videoW || h != _videoH)
+//            {
+//                _videoW = (GLuint)w;
+//                _videoH = (GLuint)h;
+//
+//                [self setVideoSize:_videoW height:_videoH];
+//            }
+//            [EAGLContext setCurrentContext:_glContext];
+//
+//            glBindTexture(GL_TEXTURE_2D, _textureYUV[TEXY]);
+//            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, _videoW, _videoH, GL_RED_EXT, GL_UNSIGNED_BYTE, data);
+//
+//            //[self debugGlError];
+//
+//            glBindTexture(GL_TEXTURE_2D, _textureYUV[TEXU]);
+//            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, _videoW/2, _videoH/2, GL_RED_EXT, GL_UNSIGNED_BYTE, (unsigned char*)data + w * h);
+//
+//            // [self debugGlError];
+//
+//            glBindTexture(GL_TEXTURE_2D, _textureYUV[TEXV]);
+//            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, _videoW/2, _videoH/2, GL_RED_EXT, GL_UNSIGNED_BYTE, (unsigned char*)data + w * h * 5 / 4);
             
         }
         [self render];

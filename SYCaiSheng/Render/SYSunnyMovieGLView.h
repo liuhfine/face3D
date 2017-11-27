@@ -29,15 +29,14 @@ typedef NS_ENUM(NSUInteger, DataSourceType) {
 #pragma mark - 接口
 - (id)initWithFrame:(CGRect)frame dataSourceType:(DataSourceType)dataSourceType;
 
-/**
- render 硬解码数据
- */
 - (void)refreshTexture:(CVPixelBufferRef)videoFrame;
 
 /**
- render h264 数据
+ h264 数据
  */
 - (void)displayData:(void *)data width:(NSInteger)w height:(NSInteger)h;
+
+- (void)reloadObjData;
 
 - (void)displayReloadTransformInfo:(float)scale X:(float)x Y:(float)y;
 

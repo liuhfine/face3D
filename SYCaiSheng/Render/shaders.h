@@ -79,6 +79,10 @@ void main()\
 
 char *const yuvFragmentShaderNormal = "precision mediump float;\
 \
+uniform mediump vec4 m_ambient;\
+uniform mediump vec4 m_specular;\
+uniform mediump vec4 m_diffuse;\
+\
 varying highp vec2 TexCoordOut;\
 uniform sampler2D SamplerY;\
 uniform sampler2D SamplerU;\
@@ -88,6 +92,7 @@ void main()\
 {\
     mediump vec3 yuv;\
     lowp vec3 rgb;\
+    mediump vec4 finalColor;\
 \
     yuv.x = texture2D(SamplerY, TexCoordOut).r;\
     yuv.y = texture2D(SamplerU, TexCoordOut).r - 0.5;\
@@ -97,8 +102,16 @@ void main()\
                0,       -0.39465,  2.03211,\
                1.13983, -0.58060,  0) * yuv;\
 \
-    gl_FragColor = vec4(rgb, 1.0);\
+    finalColor = texture2D(SamplerY,TexCoordOut);\
+    gl_FragColor = vec4(rgb, 1.0)*vec4(0.7,0.7,0.7,1.0);\
 }";
+
+/*
+ * gl_FragColor = vec4(rgb, 1.0);
+ * gl_FragColor = texture2D(TexCoordOut,TexCoordOut);
+ * gl_FragColor = vec4(rgb, 1.0);
+ * gl_FragColor = finalColor*vec4(0.7,0.7,0.7,1.0);\
+ */
 
 char *const rgbFragmentShaderAsteroid = "precision mediump float;\
 \

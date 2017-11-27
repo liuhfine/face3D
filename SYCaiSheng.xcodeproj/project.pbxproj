@@ -7,6 +7,16 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A30B4ED11FCC31350083D513 /* SY3DObjView.m in Sources */ = {isa = PBXBuildFile; fileRef = A30B4ED01FCC31350083D513 /* SY3DObjView.m */; };
+		A30B4ED61FCC33290083D513 /* Shader.vsh in Resources */ = {isa = PBXBuildFile; fileRef = A30B4ED31FCC33280083D513 /* Shader.vsh */; };
+		A30B4ED71FCC33290083D513 /* Shader.fsh in Resources */ = {isa = PBXBuildFile; fileRef = A30B4ED41FCC33280083D513 /* Shader.fsh */; };
+		A30B4ED81FCC33290083D513 /* ShaderProcessor.m in Sources */ = {isa = PBXBuildFile; fileRef = A30B4ED51FCC33290083D513 /* ShaderProcessor.m */; };
+		A30B4EDB1FCC33E50083D513 /* Transformations.m in Sources */ = {isa = PBXBuildFile; fileRef = A30B4EDA1FCC33E50083D513 /* Transformations.m */; };
+		A30B4EE61FCC34F20083D513 /* facegen.obj in Resources */ = {isa = PBXBuildFile; fileRef = A30B4EE41FCC34F20083D513 /* facegen.obj */; };
+		A30B4EEB1FCC352D0083D513 /* facegen_eyel_hi.jpg in Resources */ = {isa = PBXBuildFile; fileRef = A30B4EE81FCC352D0083D513 /* facegen_eyel_hi.jpg */; };
+		A30B4EEC1FCC352D0083D513 /* facegen_eyer_hi.jpg in Resources */ = {isa = PBXBuildFile; fileRef = A30B4EE91FCC352D0083D513 /* facegen_eyer_hi.jpg */; };
+		A30B4EED1FCC352D0083D513 /* facegen_skin_hi.jpg in Resources */ = {isa = PBXBuildFile; fileRef = A30B4EEA1FCC352D0083D513 /* facegen_skin_hi.jpg */; };
+		A30B4EEF1FCC35310083D513 /* facegen.mtl in Resources */ = {isa = PBXBuildFile; fileRef = A30B4EEE1FCC35310083D513 /* facegen.mtl */; };
 		A332CD8A1FC2684E00999F15 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = A332CD891FC2684E00999F15 /* AppDelegate.m */; };
 		A332CD8D1FC2684E00999F15 /* ViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A332CD8C1FC2684E00999F15 /* ViewController.m */; };
 		A332CD901FC2684E00999F15 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = A332CD8E1FC2684E00999F15 /* Main.storyboard */; };
@@ -36,6 +46,24 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		A30B4EBA1FCBAAC00083D513 /* OpenGLES.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGLES.framework; path = System/Library/Frameworks/OpenGLES.framework; sourceTree = SDKROOT; };
+		A30B4EBB1FCBAAD80083D513 /* GLKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = GLKit.framework; path = System/Library/Frameworks/GLKit.framework; sourceTree = SDKROOT; };
+		A30B4EC01FCBAB180083D513 /* shaders.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = shaders.h; sourceTree = "<group>"; };
+		A30B4ECF1FCC31350083D513 /* SY3DObjView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SY3DObjView.h; sourceTree = "<group>"; };
+		A30B4ED01FCC31350083D513 /* SY3DObjView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SY3DObjView.m; sourceTree = "<group>"; };
+		A30B4ED21FCC33280083D513 /* ShaderProcessor.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ShaderProcessor.h; sourceTree = "<group>"; };
+		A30B4ED31FCC33280083D513 /* Shader.vsh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.glsl; path = Shader.vsh; sourceTree = "<group>"; };
+		A30B4ED41FCC33280083D513 /* Shader.fsh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.glsl; path = Shader.fsh; sourceTree = "<group>"; };
+		A30B4ED51FCC33290083D513 /* ShaderProcessor.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ShaderProcessor.m; sourceTree = "<group>"; };
+		A30B4ED91FCC33E50083D513 /* Transformations.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Transformations.h; sourceTree = "<group>"; };
+		A30B4EDA1FCC33E50083D513 /* Transformations.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Transformations.m; sourceTree = "<group>"; };
+		A30B4EDC1FCC34E20083D513 /* FaceGenMTL.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FaceGenMTL.h; sourceTree = "<group>"; };
+		A30B4EDD1FCC34E30083D513 /* facegenOBJ.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = facegenOBJ.h; sourceTree = "<group>"; };
+		A30B4EE41FCC34F20083D513 /* facegen.obj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = facegen.obj; sourceTree = "<group>"; };
+		A30B4EE81FCC352D0083D513 /* facegen_eyel_hi.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = facegen_eyel_hi.jpg; sourceTree = "<group>"; };
+		A30B4EE91FCC352D0083D513 /* facegen_eyer_hi.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = facegen_eyer_hi.jpg; sourceTree = "<group>"; };
+		A30B4EEA1FCC352D0083D513 /* facegen_skin_hi.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = facegen_skin_hi.jpg; sourceTree = "<group>"; };
+		A30B4EEE1FCC35310083D513 /* facegen.mtl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = facegen.mtl; sourceTree = "<group>"; };
 		A332CD851FC2684E00999F15 /* SYCaiSheng.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SYCaiSheng.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A332CD881FC2684E00999F15 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		A332CD891FC2684E00999F15 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
@@ -79,6 +107,52 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		A30B4EA81FCB99FA0083D513 /* Render */ = {
+			isa = PBXGroup;
+			children = (
+				A30B4EC01FCBAB180083D513 /* shaders.h */,
+				A30B4ECF1FCC31350083D513 /* SY3DObjView.h */,
+				A30B4ED01FCC31350083D513 /* SY3DObjView.m */,
+				A30B4ED41FCC33280083D513 /* Shader.fsh */,
+				A30B4ED31FCC33280083D513 /* Shader.vsh */,
+				A30B4ED21FCC33280083D513 /* ShaderProcessor.h */,
+				A30B4ED51FCC33290083D513 /* ShaderProcessor.m */,
+				A30B4ED91FCC33E50083D513 /* Transformations.h */,
+				A30B4EDA1FCC33E50083D513 /* Transformations.m */,
+			);
+			path = Render;
+			sourceTree = "<group>";
+		};
+		A30B4EAD1FCB9A0E0083D513 /* 3Dobj */ = {
+			isa = PBXGroup;
+			children = (
+				A30B4EDC1FCC34E20083D513 /* FaceGenMTL.h */,
+				A30B4EDD1FCC34E30083D513 /* facegenOBJ.h */,
+			);
+			path = 3Dobj;
+			sourceTree = "<group>";
+		};
+		A30B4EAF1FCB9A120083D513 /* Res */ = {
+			isa = PBXGroup;
+			children = (
+				A30B4EE81FCC352D0083D513 /* facegen_eyel_hi.jpg */,
+				A30B4EE91FCC352D0083D513 /* facegen_eyer_hi.jpg */,
+				A30B4EEA1FCC352D0083D513 /* facegen_skin_hi.jpg */,
+				A30B4EE41FCC34F20083D513 /* facegen.obj */,
+				A30B4EEE1FCC35310083D513 /* facegen.mtl */,
+			);
+			path = Res;
+			sourceTree = "<group>";
+		};
+		A30B4EB91FCBAAC00083D513 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				A30B4EBB1FCBAAD80083D513 /* GLKit.framework */,
+				A30B4EBA1FCBAAC00083D513 /* OpenGLES.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		A332CD7C1FC2684E00999F15 = {
 			isa = PBXGroup;
 			children = (
@@ -86,6 +160,7 @@
 				A332CDA01FC2684E00999F15 /* SYCaiShengTests */,
 				A332CDAB1FC2684E00999F15 /* SYCaiShengUITests */,
 				A332CD861FC2684E00999F15 /* Products */,
+				A30B4EB91FCBAAC00083D513 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -102,6 +177,9 @@
 		A332CD871FC2684E00999F15 /* SYCaiSheng */ = {
 			isa = PBXGroup;
 			children = (
+				A30B4EAF1FCB9A120083D513 /* Res */,
+				A30B4EAD1FCB9A0E0083D513 /* 3Dobj */,
+				A30B4EA81FCB99FA0083D513 /* Render */,
 				A332CD881FC2684E00999F15 /* AppDelegate.h */,
 				A332CD891FC2684E00999F15 /* AppDelegate.m */,
 				A332CD8B1FC2684E00999F15 /* ViewController.h */,
@@ -239,9 +317,16 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A30B4ED71FCC33290083D513 /* Shader.fsh in Resources */,
+				A30B4ED61FCC33290083D513 /* Shader.vsh in Resources */,
+				A30B4EE61FCC34F20083D513 /* facegen.obj in Resources */,
+				A30B4EEF1FCC35310083D513 /* facegen.mtl in Resources */,
+				A30B4EEB1FCC352D0083D513 /* facegen_eyel_hi.jpg in Resources */,
+				A30B4EED1FCC352D0083D513 /* facegen_skin_hi.jpg in Resources */,
 				A332CD951FC2684E00999F15 /* LaunchScreen.storyboard in Resources */,
 				A332CD921FC2684E00999F15 /* Assets.xcassets in Resources */,
 				A332CD901FC2684E00999F15 /* Main.storyboard in Resources */,
+				A30B4EEC1FCC352D0083D513 /* facegen_eyer_hi.jpg in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -268,7 +353,10 @@
 			files = (
 				A332CDBB1FC275A900999F15 /* main.m in Sources */,
 				A332CD8D1FC2684E00999F15 /* ViewController.m in Sources */,
+				A30B4EDB1FCC33E50083D513 /* Transformations.m in Sources */,
+				A30B4ED81FCC33290083D513 /* ShaderProcessor.m in Sources */,
 				A332CD8A1FC2684E00999F15 /* AppDelegate.m in Sources */,
+				A30B4ED11FCC31350083D513 /* SY3DObjView.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
