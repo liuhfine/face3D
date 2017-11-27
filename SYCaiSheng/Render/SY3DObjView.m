@@ -114,9 +114,10 @@ struct UniformHandles
 
 - (BOOL)createFrameAndRenderBuffer
 {
+    
     glGenFramebuffers(1, &_framebuffer);
     glGenRenderbuffers(1, &_renderBuffer);
-    
+
     glBindFramebuffer(GL_FRAMEBUFFER, _framebuffer);
     glBindRenderbuffer(GL_RENDERBUFFER, _renderBuffer);
     
@@ -136,23 +137,16 @@ struct UniformHandles
 
 - (void)layoutSubviews
 {
-
     [EAGLContext setCurrentContext:_glContext];
     [self destoryFrameAndRenderBuffer];
     [self createFrameAndRenderBuffer];
     
-    glViewport(0, 0, self.bounds.size.width*2, self.bounds.size.height*2);
+    glViewport(0, 0, self.bounds.size.width * 2, self.bounds.size.height * 2);
 }
 
 
 - (BOOL)doInit
 {
-//    self.glLayer = [CAEAGLLayer layer];
-//    self.glLayer.frame = self.glView.bounds;
-//    [self.glView.layer addSublayer:self.glLayer];
-//    self.glLayer.drawableProperties = @{kEAGLDrawablePropertyRetainedBacking:@NO, kEAGLDrawablePropertyColorFormat: kEAGLColorFormatRGBA8};
-    
-    
     self.eaglLayer = (CAEAGLLayer*) self.layer;
     
     self.eaglLayer.opaque = YES;
@@ -196,14 +190,19 @@ struct UniformHandles
     
     // Projection Matrix
     CGRect screen = [[UIScreen mainScreen] bounds];
-    float aspectRatio = fabsf(screen.size.width / screen.size.height);
+    float aspectRatio = fabs(screen.size.width / screen.size.height);
     _projectionMatrix = GLKMatrix4MakePerspective(GLKMathDegreesToRadians(45.0), aspectRatio, 0.1, 10.1);
     
     // ModelView Matrix
     _modelViewMatrix = GLKMatrix4Identity;
     
     // Initialize Model Pose
-//    self.transformations = [[Transformations alloc] initWithDepth:5.0f Scale:1.33f Translation:GLKVector2Make(0.0f, 0.0f) Rotation:GLKVector3Make(0.0f, 0.0f, 0.0f)];
+    self.transformations = [[Transformations alloc] initWithDepth:5.0f Scale:3.5f Translation:GLKVector2Make(0.0f, 0.0f) Rotation:GLKVector3Make(0.0f, 0.0f, 0.0f)];
+    
+    // Load Texture
+//    [self loadTexture:@"facegen_eyel_hi.jpg"];
+//    [self loadTexture:@"facegen_eyer_hi.jpg"];
+//    [self loadTexture:@"facegen_skin_hi.jpg"];
     
     // Create the GLSL program
     _program = [self.shaderProcessor BuildProgram:ShaderV with:ShaderF];
@@ -237,6 +236,10 @@ struct UniformHandles
         NSLog(@"Error loading file: %@", [error localizedDescription]);
     
     glBindTexture(GL_TEXTURE_2D, texture.name);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 }
 
 - (void)updateViewMatrices
@@ -263,10 +266,12 @@ struct UniformHandles
     }
 }
 
+static int num = 0;
 - (void)render {
     // Clear Buffers
     glClearColor(1.0, 1.0, 1.0, 1.0);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+
     
     // Set View Matrices
     [self updateViewMatrices];
@@ -299,16 +304,20 @@ struct UniformHandles
         glUniform3f(_uniforms.uSpecular, FaceGenMTLSpecular[i][0], FaceGenMTLSpecular[i][1], FaceGenMTLSpecular[i][2]);
         glUniform1f(_uniforms.uExponent, FaceGenMTLExponent[i]);
         
-        if (i==0)
-            [self loadTexture:@"facegen_eyel_hi.jpg"];
-        else if(i==1)
-            [self loadTexture:@"facegen_eyer_hi.jpg"];
-        else
-            [self loadTexture:@"facegen_skin_hi.jpg"];
+        if (num ==0) {
+            if (i ==0)
+                [self loadTexture:@"facegen_eyel_hi.jpg"];
+            else if (i==1)
+                [self loadTexture:@"facegen_eyer_hi.jpg"];
+            else
+                [self loadTexture:@"facegen_skin_hi.jpg"];
+        }
         
         // Draw scene by material group
         glDrawArrays(GL_TRIANGLES, FaceGenMTLFirst[i], FaceGenMTLCount[i]);
     }
+    
+    num = 1;
     
     // Disable Attributes
     glDisableVertexAttribArray(_attributes.aVertex);
@@ -317,6 +326,18 @@ struct UniformHandles
     
     glBindRenderbuffer(GL_RENDERBUFFER, _renderBuffer);
     [_glContext presentRenderbuffer:GL_RENDERBUFFER];
+}
+
+- (void)clearFrame
+{
+    if ([self window])
+    {
+        [EAGLContext setCurrentContext:_glContext];
+        glClearColor(0.0, 0.0, 0.0, 1.0);
+        glClear(GL_COLOR_BUFFER_BIT);
+        glBindRenderbuffer(GL_RENDERBUFFER, _renderBuffer);
+        [_glContext presentRenderbuffer:GL_RENDERBUFFER];
+    }
 }
 
 - (void)dealloc
