@@ -16,7 +16,6 @@
 #import "FaceGenMTL.h"
 #import "cubeOBJ.h"
 #import "cubeMTL.h"
-#import "pikachuOBJ.h"
 
 #define STRINGIFY(A) #A
 #import "Shader.fsh"
@@ -145,7 +144,7 @@ struct UniformHandles
     [self destoryFrameAndRenderBuffer];
     [self createFrameAndRenderBuffer];
     
-    glViewport(0, 0, self.bounds.size.width*2, self.bounds.size.height*2);
+    glViewport(0, 0, self.bounds.size.width * 2, self.bounds.size.height * 2);
 }
 
 
@@ -196,6 +195,7 @@ struct UniformHandles
 //    glScissor(0, 0, self.bounds.size.width*2, self.bounds.size.width*2);
     
     // Projection Matrix
+
 //    CGRect screen = [[UIScreen mainScreen] bounds];
     float aspectRatio = fabs(self.frame.size.width / self.frame.size.height);
     _projectionMatrix = GLKMatrix4MakePerspective(GLKMathDegreesToRadians(45.0), aspectRatio, 0.1, 10.1);
@@ -207,9 +207,10 @@ struct UniformHandles
     self.transformations = [[Transformations alloc] initWithDepth:5.0f Scale:3.5f Translation:GLKVector2Make(0.0f, 0.0f) Rotation:GLKVector3Make(0.0f, 0.0f, 0.0f)];
     
     // Load Texture
-    [self loadTexture:@"facegen_eyel_hi.jpg"];
-    [self loadTexture:@"facegen_eyer_hi.jpg"];
-    [self loadTexture:@"facegen_skin_hi.jpg"];
+//    [self loadTexture:@"facegen_eyel_hi.jpg"];
+//    [self loadTexture:@"facegen_eyer_hi.jpg"];
+//    [self loadTexture:@"facegen_skin_hi.jpg"];
+
     
     // Create the GLSL program
     _program = [self.shaderProcessor BuildProgram:ShaderV with:ShaderF];
@@ -257,6 +258,7 @@ struct UniformHandles
     
     glActiveTexture(GL_TEXTURE0 + texture.name);
     glBindTexture(GL_TEXTURE_2D, texture.name);
+
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -297,7 +299,8 @@ static int num = 0;
 - (void)render {
     // Clear Buffers
     glClearColor(1.0, 1.0, 1.0, 1.0);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+
     
     // Set View Matrices
     [self updateViewMatrices];
@@ -341,10 +344,9 @@ static int num = 0;
     //       glUniform1i(_uniforms.uTexture, i);
 
         }
-        glDrawArrays(GL_TRIANGLES, FaceGenMTLFirst[i], FaceGenMTLCount[i]);
         
         // Draw scene by material group
-        
+        glDrawArrays(GL_TRIANGLES, FaceGenMTLFirst[i], FaceGenMTLCount[i]);
     }
     num = 1;
     
@@ -356,6 +358,18 @@ static int num = 0;
     glBindRenderbuffer(GL_RENDERBUFFER, _renderBuffer);
     [_glContext presentRenderbuffer:GL_RENDERBUFFER];
     
+}
+
+- (void)clearFrame
+{
+    if ([self window])
+    {
+        [EAGLContext setCurrentContext:_glContext];
+        glClearColor(0.0, 0.0, 0.0, 1.0);
+        glClear(GL_COLOR_BUFFER_BIT);
+        glBindRenderbuffer(GL_RENDERBUFFER, _renderBuffer);
+        [_glContext presentRenderbuffer:GL_RENDERBUFFER];
+    }
 }
 
 - (void)dealloc

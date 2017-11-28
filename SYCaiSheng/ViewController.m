@@ -38,8 +38,8 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     
-//    [self createCamera];
-//    [self createScanPreviewView];
+    [self createCamera];
+    [self createScanPreviewView];
     
     [self create3DView];
 }
@@ -49,13 +49,18 @@
     CGFloat sizeX = ([UIScreen mainScreen].bounds.size.width - 60*2 );
     CGRect centerRect1 = CGRectMake(60, [UIScreen mainScreen].bounds.size.height / 4.0 - sizeX / 2.0, sizeX, sizeX);
     
-    _objView = [[SY3DObjView alloc] initWithFrame:self.view.bounds];
+    _objView = [[SY3DObjView alloc] initWithFrame:centerRect1];
     [self.view insertSubview:_objView atIndex:0];
+
 }
 
 - (void)viewDidAppear:(BOOL)animated
 {
-    [_objView reloadObjData];
+
+//    for (int i=0; i<10; i++) {
+        [_objView reloadObjData];
+//    }
+    
 }
 
 - (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event {
