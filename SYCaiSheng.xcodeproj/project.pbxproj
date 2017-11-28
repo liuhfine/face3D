@@ -58,7 +58,6 @@
 		A30B4ED91FCC33E50083D513 /* Transformations.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Transformations.h; sourceTree = "<group>"; };
 		A30B4EDA1FCC33E50083D513 /* Transformations.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Transformations.m; sourceTree = "<group>"; };
 		A30B4EDC1FCC34E20083D513 /* FaceGenMTL.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FaceGenMTL.h; sourceTree = "<group>"; };
-		A30B4EDD1FCC34E30083D513 /* facegenOBJ.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = facegenOBJ.h; sourceTree = "<group>"; };
 		A30B4EE41FCC34F20083D513 /* facegen.obj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = facegen.obj; sourceTree = "<group>"; };
 		A30B4EE81FCC352D0083D513 /* facegen_eyel_hi.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = facegen_eyel_hi.jpg; sourceTree = "<group>"; };
 		A30B4EE91FCC352D0083D513 /* facegen_eyer_hi.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = facegen_eyer_hi.jpg; sourceTree = "<group>"; };
@@ -80,6 +79,9 @@
 		A332CDA81FC2684E00999F15 /* SYCaiShengUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SYCaiShengUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A332CDAC1FC2684E00999F15 /* SYCaiShengUITests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SYCaiShengUITests.m; sourceTree = "<group>"; };
 		A332CDAE1FC2684E00999F15 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A35564DC1FCD118B000282AC /* cubeOBJ.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = cubeOBJ.h; sourceTree = "<group>"; };
+		A35564DD1FCD118B000282AC /* cubeMTL.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = cubeMTL.h; sourceTree = "<group>"; };
+		A35564DE1FCD2BE1000282AC /* facegenOBJ.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = facegenOBJ.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -126,8 +128,10 @@
 		A30B4EAD1FCB9A0E0083D513 /* 3Dobj */ = {
 			isa = PBXGroup;
 			children = (
+				A35564DD1FCD118B000282AC /* cubeMTL.h */,
+				A35564DC1FCD118B000282AC /* cubeOBJ.h */,
 				A30B4EDC1FCC34E20083D513 /* FaceGenMTL.h */,
-				A30B4EDD1FCC34E30083D513 /* facegenOBJ.h */,
+				A35564DE1FCD2BE1000282AC /* facegenOBJ.h */,
 			);
 			path = 3Dobj;
 			sourceTree = "<group>";

@@ -11,8 +11,12 @@
 #import <GLKit/GLKit.h>
 #import "ShaderProcessor.h"
 #import "Transformations.h"
+
 #import "facegenOBJ.h"
 #import "FaceGenMTL.h"
+#import "cubeOBJ.h"
+#import "cubeMTL.h"
+#import "pikachuOBJ.h"
 
 #define STRINGIFY(A) #A
 #import "Shader.fsh"
@@ -56,6 +60,7 @@ struct UniformHandles
      */
     GLuint  _renderBuffer;
     
+    GLuint  _depthbuffer;
     
     // View
     GLKMatrix4  _projectionMatrix;
@@ -114,21 +119,21 @@ struct UniformHandles
 
 - (BOOL)createFrameAndRenderBuffer
 {
-    glGenFramebuffers(1, &_framebuffer);
+    // openGL还需要在一块 buffer 上进行描绘，这块 buffer 就是 RenderBuffer（OpenGL ES 总共有三大不同用途的color buffer，depth buffer 和 stencil buffer
     glGenRenderbuffers(1, &_renderBuffer);
-    
-    glBindFramebuffer(GL_FRAMEBUFFER, _framebuffer);
     glBindRenderbuffer(GL_RENDERBUFFER, _renderBuffer);
-    
     if (![_glContext renderbufferStorage:GL_RENDERBUFFER fromDrawable:(CAEAGLLayer *)self.layer])
     {
-        NSLog(@"attach渲染缓冲区失败");
+        NSLog(@"color_render_buffer渲染缓冲区失败");
     }
     
+    // 通常也被称之为 FBO，它相当于 buffer(color, depth, stencil)的管理者，三大buffer 可以附加到一个 FBO 上。我们是用 FBO 来在 off-screen buffer上进行渲染
+    glGenFramebuffers(1, &_framebuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, _framebuffer);
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, _renderBuffer);
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
     {
-        NSLog(@"创建缓冲区错误 0x%x", glCheckFramebufferStatus(GL_FRAMEBUFFER));
+        NSLog(@"frame_buffer创建缓冲区错误 0x%x", glCheckFramebufferStatus(GL_FRAMEBUFFER));
         return NO;
     }
     return YES;
@@ -136,7 +141,6 @@ struct UniformHandles
 
 - (void)layoutSubviews
 {
-
     [EAGLContext setCurrentContext:_glContext];
     [self destoryFrameAndRenderBuffer];
     [self createFrameAndRenderBuffer];
@@ -147,14 +151,7 @@ struct UniformHandles
 
 - (BOOL)doInit
 {
-//    self.glLayer = [CAEAGLLayer layer];
-//    self.glLayer.frame = self.glView.bounds;
-//    [self.glView.layer addSublayer:self.glLayer];
-//    self.glLayer.drawableProperties = @{kEAGLDrawablePropertyRetainedBacking:@NO, kEAGLDrawablePropertyColorFormat: kEAGLColorFormatRGBA8};
-    
-    
     self.eaglLayer = (CAEAGLLayer*) self.layer;
-    
     self.eaglLayer.opaque = YES;
     self.eaglLayer.drawableProperties = [NSDictionary dictionaryWithObjectsAndKeys:
                                     [NSNumber numberWithBool:NO], kEAGLDrawablePropertyRetainedBacking,
@@ -193,17 +190,26 @@ struct UniformHandles
     
     // Enable depth test
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_SAMPLE_ALPHA_TO_COVERAGE);
+//    glCullFace(GL_FRONT_AND_BACK);
+//    glEnable(GL_SCISSOR_TEST);
+//    glScissor(0, 0, self.bounds.size.width*2, self.bounds.size.width*2);
     
     // Projection Matrix
-    CGRect screen = [[UIScreen mainScreen] bounds];
-    float aspectRatio = fabsf(screen.size.width / screen.size.height);
+//    CGRect screen = [[UIScreen mainScreen] bounds];
+    float aspectRatio = fabs(self.frame.size.width / self.frame.size.height);
     _projectionMatrix = GLKMatrix4MakePerspective(GLKMathDegreesToRadians(45.0), aspectRatio, 0.1, 10.1);
     
     // ModelView Matrix
     _modelViewMatrix = GLKMatrix4Identity;
     
     // Initialize Model Pose
-//    self.transformations = [[Transformations alloc] initWithDepth:5.0f Scale:1.33f Translation:GLKVector2Make(0.0f, 0.0f) Rotation:GLKVector3Make(0.0f, 0.0f, 0.0f)];
+    self.transformations = [[Transformations alloc] initWithDepth:5.0f Scale:3.5f Translation:GLKVector2Make(0.0f, 0.0f) Rotation:GLKVector3Make(0.0f, 0.0f, 0.0f)];
+    
+    // Load Texture
+    [self loadTexture:@"facegen_eyel_hi.jpg"];
+    [self loadTexture:@"facegen_eyer_hi.jpg"];
+    [self loadTexture:@"facegen_skin_hi.jpg"];
     
     // Create the GLSL program
     _program = [self.shaderProcessor BuildProgram:ShaderV with:ShaderF];
@@ -226,6 +232,19 @@ struct UniformHandles
     _uniforms.uMode = glGetUniformLocation(_program, "uMode");
 }
 
+- (void)loadVertexForVBO
+{
+    GLuint vertexBuffer;
+    // 创建顶点缓存对象
+    glGenBuffers(1, &vertexBuffer);
+    
+    // 指定绑定的目标，取值为 GL_ARRAY_BUFFER（用于顶点数据） 或 GL_ELEMENT_ARRAY_BUFFER（用于索引数据）；
+    glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+    
+    // 为顶点缓存对象分配空间
+    glBufferData(GL_ARRAY_BUFFER, sizeof(facegenOBJVerts), facegenOBJVerts, GL_STATIC_DRAW);
+}
+
 - (void)loadTexture:(NSString *)fileName
 {
     NSDictionary* options = @{[NSNumber numberWithBool:YES] : GLKTextureLoaderOriginBottomLeft};
@@ -236,7 +255,13 @@ struct UniformHandles
     if(texture == nil)
         NSLog(@"Error loading file: %@", [error localizedDescription]);
     
+    glActiveTexture(GL_TEXTURE0 + texture.name);
     glBindTexture(GL_TEXTURE_2D, texture.name);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    
 }
 
 - (void)updateViewMatrices
@@ -251,8 +276,13 @@ struct UniformHandles
     _normalMatrix = GLKMatrix4GetMatrix3(GLKMatrix4InvertAndTranspose(_modelViewMatrix, &isInvertible));
 }
 
+#pragma mark - reloadData
+static float rotationX;
 - (void)reloadObjData
 {
+    const float m = GLKMathDegreesToRadians(0.5f);
+    [self.transformations rotate:GLKVector3Make(rotationX+=30.0f, 0.0f, 0.0f) withMultiplier:m];
+    
     if (!self.window)
     {
         return;
@@ -263,6 +293,7 @@ struct UniformHandles
     }
 }
 
+static int num = 0;
 - (void)render {
     // Clear Buffers
     glClearColor(1.0, 1.0, 1.0, 1.0);
@@ -278,7 +309,7 @@ struct UniformHandles
     glUniform1i(_uniforms.uTexture, 0);
     
     // Set View Mode
-    glUniform1i(_uniforms.uMode, 1);
+    glUniform1i(_uniforms.uMode, 0);
     
     // Enable Attributes
     glEnableVertexAttribArray(_attributes.aVertex);
@@ -286,12 +317,12 @@ struct UniformHandles
     glEnableVertexAttribArray(_attributes.aTexture);
     
     // Load OBJ Data
-    glVertexAttribPointer(_attributes.aVertex, 3, GL_FLOAT, GL_FALSE, 0, facegenOBJVerts);
-    glVertexAttribPointer(_attributes.aNormal, 3, GL_FLOAT, GL_FALSE, 0, facegenOBJNormals);
-    glVertexAttribPointer(_attributes.aTexture, 2, GL_FLOAT, GL_FALSE, 0, facegenOBJTexCoords);
+    glVertexAttribPointer(_attributes.aVertex, 3, GL_FLOAT, GL_FALSE, 0, facegenOBJVerts);      // facegenOBJVerts cubeOBJVerts
+    glVertexAttribPointer(_attributes.aNormal, 3, GL_FLOAT, GL_FALSE, 0, facegenOBJNormals);    // facegenOBJNormals cubeOBJNormals
+    glVertexAttribPointer(_attributes.aTexture, 2, GL_FLOAT, GL_FALSE, 0, facegenOBJTexCoords); // facegenOBJTexCoords cubeOBJTexCoords
     
-    
-    // Load MTL Data
+    // Load MTL Data FaceGenMTLNumMaterials  FaceGenMTLAmbient  FaceGenMTLDiffuse FaceGenMTLSpecular  FaceGenMTLExponent FaceGenMTLFirst FaceGenMTLCount
+    //
     for(int i=0; i<FaceGenMTLNumMaterials; i++)
     {
         glUniform3f(_uniforms.uAmbient, FaceGenMTLAmbient[i][0], FaceGenMTLAmbient[i][1], FaceGenMTLAmbient[i][2]);
@@ -299,16 +330,23 @@ struct UniformHandles
         glUniform3f(_uniforms.uSpecular, FaceGenMTLSpecular[i][0], FaceGenMTLSpecular[i][1], FaceGenMTLSpecular[i][2]);
         glUniform1f(_uniforms.uExponent, FaceGenMTLExponent[i]);
         
-        if (i==0)
-            [self loadTexture:@"facegen_eyel_hi.jpg"];
-        else if(i==1)
-            [self loadTexture:@"facegen_eyer_hi.jpg"];
-        else
-            [self loadTexture:@"facegen_skin_hi.jpg"];
+        if (num == 0) {
+//            if (i==0)
+//                [self loadTexture:@"facegen_eyel_hi.jpg"];
+//            else if(i==1)
+//                [self loadTexture:@"facegen_eyer_hi.jpg"];
+//            else
+//                [self loadTexture:@"facegen_skin_hi.jpg"];
+            
+    //       glUniform1i(_uniforms.uTexture, i);
+
+        }
+        glDrawArrays(GL_TRIANGLES, FaceGenMTLFirst[i], FaceGenMTLCount[i]);
         
         // Draw scene by material group
-        glDrawArrays(GL_TRIANGLES, FaceGenMTLFirst[i], FaceGenMTLCount[i]);
+        
     }
+    num = 1;
     
     // Disable Attributes
     glDisableVertexAttribArray(_attributes.aVertex);
@@ -317,11 +355,12 @@ struct UniformHandles
     
     glBindRenderbuffer(GL_RENDERBUFFER, _renderBuffer);
     [_glContext presentRenderbuffer:GL_RENDERBUFFER];
+    
 }
 
 - (void)dealloc
 {
-    
+    num = 0;
     if (_framebuffer) {
         glDeleteFramebuffers(1, &_framebuffer);
         _framebuffer = 0;

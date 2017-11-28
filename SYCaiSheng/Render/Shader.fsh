@@ -39,7 +39,7 @@ lowp vec3 materialMTL(highp float df, highp float sf)
 lowp vec3 modelColor(void)
 {
     highp vec3 N = normalize(vNormal);
-    highp vec3 L = vec3(1.0, 1.0, 0.5);
+    highp vec3 L = vec3(0.8, 0.8, 0.5);
     highp vec3 E = vec3(0.0, 0.0, 1.0);
     highp vec3 H = normalize(L + E);
     

@@ -21,7 +21,6 @@
  AVCaptureVideoDataOutputSampleBufferDelegate
 >
 {
-//    SYSunnyMovieGLView *_glview;
     SY3DObjView *_objView;
 }
 @property (nonatomic, strong) AVCaptureSession *session;
@@ -38,7 +37,6 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    // Do any additional setup after loading the view, typically from a nib.
     
 //    [self createCamera];
 //    [self createScanPreviewView];
@@ -51,27 +49,22 @@
     CGFloat sizeX = ([UIScreen mainScreen].bounds.size.width - 60*2 );
     CGRect centerRect1 = CGRectMake(60, [UIScreen mainScreen].bounds.size.height / 4.0 - sizeX / 2.0, sizeX, sizeX);
     
-//    _glview = [[SYSunnyMovieGLView alloc] initWithFrame:centerRect1 dataSourceType:DataSourceTypeYUV420];
-//    [self.view insertSubview:_glview atIndex:0];
-//    [_glview isMotionWithUsing:NO];
-    
-    _objView = [[SY3DObjView alloc] initWithFrame:self.view.frame];
+    _objView = [[SY3DObjView alloc] initWithFrame:self.view.bounds];
     [self.view insertSubview:_objView atIndex:0];
-    
-    
 }
 
 - (void)viewDidAppear:(BOOL)animated
 {
-//    CGFloat sizeX = ([UIScreen mainScreen].bounds.size.width - 60*2 );
-//    CGRect centerRect1 = CGRectMake(60, [UIScreen mainScreen].bounds.size.height / 4.0 - sizeX / 2.0, sizeX, sizeX);
-    
-//    [_glview displayReloadTransformInfo:95.0 X:0.50 Y:0.6];
-//
-//    [_glview displayData:nil width:centerRect1.size.width height:centerRect1.size.height];
-    
     [_objView reloadObjData];
 }
+
+- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event {
+}
+
+- (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event {
+    [_objView reloadObjData];
+}
+
 
 - (void)matrix
 {
@@ -107,9 +100,9 @@
  
 //    void *yuvData = malloc(width*height*3);
 //    for (int line=0; line<yuvData; ++line) {
-//        memcmp(yuvData + line*, <#const void *__s2#>, <#size_t __n#>)
+//        memcmp(yuvData + line*, 1, 2)
 //    }
-    NSLog(@"is video frame width:%d  planeCount:%d",CVPixelBufferGetPixelFormatType(imageBuffer),planeCount);
+//    NSLog(@"is video frame width:%d  planeCount:%d",CVPixelBufferGetPixelFormatType(imageBuffer),planeCount);
 
 }
 
