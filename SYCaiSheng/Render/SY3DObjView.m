@@ -49,17 +49,13 @@ struct UniformHandles
     // Render
     GLuint  _program;
     GLuint  _texture;
-    /**
-     帧缓冲区
-     */
+
+    /** 帧缓冲区 */
     GLuint  _framebuffer;
-    
-    /**
-     渲染缓冲区
-     */
+    /** 渲染缓冲区 */
     GLuint  _renderBuffer;
-    
-    GLuint  _depthbuffer;
+    /** 渲染缓冲区 */
+    GLuint _depthRenderBuffer;
     
     // View
     GLKMatrix4  _projectionMatrix;
@@ -103,21 +99,26 @@ struct UniformHandles
 - (void)destoryFrameAndRenderBuffer
 {
     if (_framebuffer)
-    {
         glDeleteFramebuffers(1, &_framebuffer);
-    }
     
     if (_renderBuffer)
-    {
         glDeleteRenderbuffers(1, &_renderBuffer);
-    }
+
+    if (_depthRenderBuffer)
+        glDeleteFramebuffers(1, &_depthRenderBuffer);
     
     _framebuffer = 0;
     _renderBuffer = 0;
+    _depthRenderBuffer = 0;
 }
 
 - (BOOL)createFrameAndRenderBuffer
 {
+    // 3D绘图一般绑定深度缓冲区，未绑定，开启enable深度测试无用
+    glGenRenderbuffers(1, &_depthRenderBuffer);
+    glBindRenderbuffer(GL_RENDERBUFFER, _depthRenderBuffer);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, self.bounds.size.width * 2, self.bounds.size.height * 2);
+    
     // openGL还需要在一块 buffer 上进行描绘，这块 buffer 就是 RenderBuffer（OpenGL ES 总共有三大不同用途的color buffer，depth buffer 和 stencil buffer
     glGenRenderbuffers(1, &_renderBuffer);
     glBindRenderbuffer(GL_RENDERBUFFER, _renderBuffer);
@@ -130,6 +131,9 @@ struct UniformHandles
     glGenFramebuffers(1, &_framebuffer);
     glBindFramebuffer(GL_FRAMEBUFFER, _framebuffer);
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, _renderBuffer);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, _depthRenderBuffer);
+    
+    // 检查帧缓冲状态
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
     {
         NSLog(@"frame_buffer创建缓冲区错误 0x%x", glCheckFramebufferStatus(GL_FRAMEBUFFER));
@@ -189,29 +193,22 @@ struct UniformHandles
     
     // Enable depth test
     glEnable(GL_DEPTH_TEST);
-    glEnable(GL_SAMPLE_ALPHA_TO_COVERAGE);
-//    glCullFace(GL_FRONT_AND_BACK);
-//    glEnable(GL_SCISSOR_TEST);
-//    glScissor(0, 0, self.bounds.size.width*2, self.bounds.size.width*2);
-    
-    // Projection Matrix
 
-//    CGRect screen = [[UIScreen mainScreen] bounds];
-    float aspectRatio = fabs(self.frame.size.width / self.frame.size.height);
-    _projectionMatrix = GLKMatrix4MakePerspective(GLKMathDegreesToRadians(45.0), aspectRatio, 0.1, 10.1);
+    // Projection Matrix
+    float aspectRatio = fabs(self.bounds.size.width / self.bounds.size.height);
+    _projectionMatrix = GLKMatrix4MakePerspective(GLKMathDegreesToRadians(45.0), aspectRatio, 0.1f, 400.0f);
     
     // ModelView Matrix
     _modelViewMatrix = GLKMatrix4Identity;
     
     // Initialize Model Pose
-    self.transformations = [[Transformations alloc] initWithDepth:5.0f Scale:3.5f Translation:GLKVector2Make(0.0f, 0.0f) Rotation:GLKVector3Make(0.0f, 0.0f, 0.0f)];
+    self.transformations = [[Transformations alloc] initWithDepth:5.0f Scale:5.0f Translation:GLKVector2Make(0.0f, 0.0f) Rotation:GLKVector3Make(0.0f, 0.0f, 0.0f)];
     
     // Load Texture
-//    [self loadTexture:@"facegen_eyel_hi.jpg"];
-//    [self loadTexture:@"facegen_eyer_hi.jpg"];
-//    [self loadTexture:@"facegen_skin_hi.jpg"];
+    [self loadTexture:@"facegen_eyel_hi.jpg"];
+    [self loadTexture:@"facegen_eyer_hi.jpg"];
+    [self loadTexture:@"facegen_skin_hi.jpg"];
 
-    
     // Create the GLSL program
     _program = [self.shaderProcessor BuildProgram:ShaderV with:ShaderF];
     glUseProgram(_program);
@@ -231,19 +228,30 @@ struct UniformHandles
     _uniforms.uExponent = glGetUniformLocation(_program, "uExponent");
     _uniforms.uTexture = glGetUniformLocation(_program, "uTexture");
     _uniforms.uMode = glGetUniformLocation(_program, "uMode");
+    
+    // Attach Texture
+//    glUniform1i(_uniforms.uTexture, 0);
+//    glUniform1i(_uniforms.uTexture, 1);
+//    glUniform1i(_uniforms.uTexture, 2);
 }
 
 - (void)loadVertexForVBO
 {
-    GLuint vertexBuffer;
+    GLuint vertexbo;
     // 创建顶点缓存对象
-    glGenBuffers(1, &vertexBuffer);
-    
+    glGenBuffers(1, &vertexbo);
     // 指定绑定的目标，取值为 GL_ARRAY_BUFFER（用于顶点数据） 或 GL_ELEMENT_ARRAY_BUFFER（用于索引数据）；
-    glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
-    
-    // 为顶点缓存对象分配空间
+    glBindBuffer(GL_ARRAY_BUFFER, vertexbo);
+    // 为顶点缓存对象分配空间 并将数据缓存
     glBufferData(GL_ARRAY_BUFFER, sizeof(facegenOBJVerts), facegenOBJVerts, GL_STATIC_DRAW);
+    
+    /* index buffer object ibo fece 顶点索引
+    GLuint indexbo;
+    glGenBuffers(1, &indexbo);//创建ibobuffer
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexbo);//指定buffer类型
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indexBuf), indexBuf, GL_STATIC_DRAW); //上传数据到buffer
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);//解除绑定
+     */
 }
 
 - (void)loadTexture:(NSString *)fileName
@@ -297,11 +305,11 @@ static float rotationX;
 
 static int num = 0;
 - (void)render {
+    
     // Clear Buffers
     glClearColor(1.0, 1.0, 1.0, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
-    
     // Set View Matrices
     [self updateViewMatrices];
     glUniformMatrix4fv(_uniforms.uProjectionMatrix, 1, 0, _projectionMatrix.m);
@@ -309,54 +317,51 @@ static int num = 0;
     glUniformMatrix3fv(_uniforms.uNormalMatrix, 1, 0, _normalMatrix.m);
     
     // Attach Texture
-    glUniform1i(_uniforms.uTexture, 0);
+//    glUniform1i(_uniforms.uTexture, 0);
     
     // Set View Mode
-    glUniform1i(_uniforms.uMode, 0);
+    glUniform1i(_uniforms.uMode, 1);
     
-    // Enable Attributes
+    /* Load OBJ Data 没使用VBO，每次渲染都从CPU拷贝顶点数据到GPU */
+    glVertexAttribPointer(_attributes.aVertex, 3, GL_FLOAT, GL_FALSE, 0, facegenOBJVerts);      // facegenOBJVerts cubeOBJVerts
     glEnableVertexAttribArray(_attributes.aVertex);
+     
+    glVertexAttribPointer(_attributes.aNormal, 3, GL_FLOAT, GL_FALSE, 0, facegenOBJNormals);    // facegenOBJNormals cubeOBJNormals
     glEnableVertexAttribArray(_attributes.aNormal);
+    
+    glVertexAttribPointer(_attributes.aTexture, 2, GL_FLOAT, GL_FALSE, 0, facegenOBJTexCoords); // facegenOBJTexCoords cubeOBJTexCoords
     glEnableVertexAttribArray(_attributes.aTexture);
     
-    // Load OBJ Data
-    glVertexAttribPointer(_attributes.aVertex, 3, GL_FLOAT, GL_FALSE, 0, facegenOBJVerts);      // facegenOBJVerts cubeOBJVerts
-    glVertexAttribPointer(_attributes.aNormal, 3, GL_FLOAT, GL_FALSE, 0, facegenOBJNormals);    // facegenOBJNormals cubeOBJNormals
-    glVertexAttribPointer(_attributes.aTexture, 2, GL_FLOAT, GL_FALSE, 0, facegenOBJTexCoords); // facegenOBJTexCoords cubeOBJTexCoords
-    
-    // Load MTL Data FaceGenMTLNumMaterials  FaceGenMTLAmbient  FaceGenMTLDiffuse FaceGenMTLSpecular  FaceGenMTLExponent FaceGenMTLFirst FaceGenMTLCount
-    //
+    /* VBO 预加载顶点数据，存储至图形卡缓存上
+    glVertexAttribPointer(_attributes.aVertex, 3, GL_FLOAT, GL_FALSE, 0, 0);//顶点坐标起始位置
+    glEnableVertexAttribArray(_attributes.aVertex);
+//    glVertexAttribPointer(_attributes.aNormal, 3, GL_FLOAT, GL_FALSE, sizeof(facegenOBJVerts), 0);
+//    glEnableVertexAttribArray(_attributes.aNormal);
+//    glVertexAttribPointer(_attributes.aTexture, 2, GL_FLOAT, GL_FALSE, +sizeof(facegenOBJNormals), 0);
+//    glEnableVertexAttribArray(_attributes.aTexture);
+    */
+
     for(int i=0; i<FaceGenMTLNumMaterials; i++)
     {
         glUniform3f(_uniforms.uAmbient, FaceGenMTLAmbient[i][0], FaceGenMTLAmbient[i][1], FaceGenMTLAmbient[i][2]);
         glUniform3f(_uniforms.uDiffuse, FaceGenMTLDiffuse[i][0], FaceGenMTLDiffuse[i][1], FaceGenMTLDiffuse[i][2]);
         glUniform3f(_uniforms.uSpecular, FaceGenMTLSpecular[i][0], FaceGenMTLSpecular[i][1], FaceGenMTLSpecular[i][2]);
         glUniform1f(_uniforms.uExponent, FaceGenMTLExponent[i]);
-        
-        if (num == 0) {
-//            if (i==0)
-//                [self loadTexture:@"facegen_eyel_hi.jpg"];
-//            else if(i==1)
-//                [self loadTexture:@"facegen_eyer_hi.jpg"];
-//            else
-//                [self loadTexture:@"facegen_skin_hi.jpg"];
-            
-    //       glUniform1i(_uniforms.uTexture, i);
 
-        }
-        
+        glUniform1i(_uniforms.uTexture, i);
         // Draw scene by material group
         glDrawArrays(GL_TRIANGLES, FaceGenMTLFirst[i], FaceGenMTLCount[i]);
     }
-    num = 1;
-    
+
     // Disable Attributes
     glDisableVertexAttribArray(_attributes.aVertex);
     glDisableVertexAttribArray(_attributes.aNormal);
     glDisableVertexAttribArray(_attributes.aTexture);
     
+//    glBindBuffer(GL_ARRAY_BUFFER, 0);//解除VBO绑定
     glBindRenderbuffer(GL_RENDERBUFFER, _renderBuffer);
     [_glContext presentRenderbuffer:GL_RENDERBUFFER];
+    
     
 }
 
@@ -380,9 +385,15 @@ static int num = 0;
         _framebuffer = 0;
     }
     
+    
     if (_renderBuffer) {
         glDeleteRenderbuffers(1, &_renderBuffer);
         _renderBuffer = 0;
+    }
+    
+    if (_depthRenderBuffer) {
+        glDeleteRenderbuffers(1, &_depthRenderBuffer);
+        _depthRenderBuffer = 0;
     }
     
     if (_program) {

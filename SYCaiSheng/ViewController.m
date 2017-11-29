@@ -38,10 +38,12 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     
-    [self createCamera];
-    [self createScanPreviewView];
+//    [self createCamera];
+//    [self createScanPreviewView];
+//
+//    [self create3DView];
     
-    [self create3DView];
+    [self matrix];
 }
 
 - (void)create3DView
@@ -77,9 +79,19 @@
     static float m2[] = { 10.0, 20.0, 30.0, 30.0, 40.0, 50.0 };
 //    static float mresult[] = [double](count : 9, repeatedValue : 0.0);
     
-    float v[] = {4.0, 5.0};
-    float s = 3.0;
     
+    float matrixA [3][3] = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+    
+    float matrixB [3][1] = {{3}, {5}, {9}};
+
+    float results [3][1];
+    
+    vDSP_mmul(&matrixA[0][0], 1, &matrixB[0][0], 1, &results[0][0], 1, 3, 1, 3);
+    
+    NSLog(@"vDSP_mmul :%f %f %f",results[0][1],results[1][1],results[2][1]);
+
+    // 矩阵相乘，在加第三个矩阵
+    vDSP_zmma(<#const DSPSplitComplex * _Nonnull __A#>, <#vDSP_Stride __IA#>, <#const DSPSplitComplex * _Nonnull __B#>, <#vDSP_Stride __IB#>, <#const DSPSplitComplex * _Nonnull __C#>, <#vDSP_Stride __IC#>, <#const DSPSplitComplex * _Nonnull __D#>, <#vDSP_Stride __ID#>, <#vDSP_Length __M#>, <#vDSP_Length __N#>, <#vDSP_Length __P#>)
 //    vDSP_vsaddD(v, 1, &s, &vsresult, 1, vDSP_Length(v.count))
 //    vsresult    // returns [7.0, 8.0]
     
