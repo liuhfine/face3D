@@ -26,6 +26,7 @@
 		A332CDAD1FC2684E00999F15 /* SYCaiShengUITests.m in Sources */ = {isa = PBXBuildFile; fileRef = A332CDAC1FC2684E00999F15 /* SYCaiShengUITests.m */; };
 		A332CDBA1FC2686A00999F15 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = A332CD971FC2684E00999F15 /* main.m */; };
 		A332CDBB1FC275A900999F15 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = A332CD971FC2684E00999F15 /* main.m */; };
+		A3560D2F1FD014970099CB07 /* new_face_img.jpg in Resources */ = {isa = PBXBuildFile; fileRef = A3560D2E1FD014970099CB07 /* new_face_img.jpg */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -82,6 +83,7 @@
 		A35564DC1FCD118B000282AC /* cubeOBJ.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = cubeOBJ.h; sourceTree = "<group>"; };
 		A35564DD1FCD118B000282AC /* cubeMTL.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = cubeMTL.h; sourceTree = "<group>"; };
 		A35564DE1FCD2BE1000282AC /* facegenOBJ.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = facegenOBJ.h; sourceTree = "<group>"; };
+		A3560D2E1FD014970099CB07 /* new_face_img.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = new_face_img.jpg; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -139,6 +141,7 @@
 		A30B4EAF1FCB9A120083D513 /* Res */ = {
 			isa = PBXGroup;
 			children = (
+				A3560D2E1FD014970099CB07 /* new_face_img.jpg */,
 				A30B4EE81FCC352D0083D513 /* facegen_eyel_hi.jpg */,
 				A30B4EE91FCC352D0083D513 /* facegen_eyer_hi.jpg */,
 				A30B4EEA1FCC352D0083D513 /* facegen_skin_hi.jpg */,
@@ -327,6 +330,7 @@
 				A30B4EEF1FCC35310083D513 /* facegen.mtl in Resources */,
 				A30B4EEB1FCC352D0083D513 /* facegen_eyel_hi.jpg in Resources */,
 				A30B4EED1FCC352D0083D513 /* facegen_skin_hi.jpg in Resources */,
+				A3560D2F1FD014970099CB07 /* new_face_img.jpg in Resources */,
 				A332CD951FC2684E00999F15 /* LaunchScreen.storyboard in Resources */,
 				A332CD921FC2684E00999F15 /* Assets.xcassets in Resources */,
 				A332CD901FC2684E00999F15 /* Main.storyboard in Resources */,

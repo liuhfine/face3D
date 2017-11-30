@@ -207,7 +207,7 @@ struct UniformHandles
     // Load Texture
     [self loadTexture:@"facegen_eyel_hi.jpg"];
     [self loadTexture:@"facegen_eyer_hi.jpg"];
-    [self loadTexture:@"facegen_skin_hi.jpg"];
+    [self loadTexture:@"new_face_img.jpg"]; // facegen_skin_hi
 
     // Create the GLSL program
     _program = [self.shaderProcessor BuildProgram:ShaderV with:ShaderF];

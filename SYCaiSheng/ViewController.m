@@ -38,12 +38,12 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     
-//    [self createCamera];
-//    [self createScanPreviewView];
-//
-//    [self create3DView];
+    [self createCamera];
+    [self createScanPreviewView];
+
+    [self create3DView];
     
-    [self matrix];
+//    [self matrix];
 }
 
 - (void)create3DView
@@ -75,28 +75,111 @@
 
 - (void)matrix
 {
-    static float m1[] = { 3.0, 2.0, 4.0, 5.0, 6.0, 7.0 };
-    static float m2[] = { 10.0, 20.0, 30.0, 30.0, 40.0, 50.0 };
-//    static float mresult[] = [double](count : 9, repeatedValue : 0.0);
+    /*
+     // 示例二维数组： int example[5][10]
+     // 数组的总数为：
+     sizeof(example) / sizeof(int)       // sizeof(example)为该数组的大小(这里是5x10)，sizeof(int)为int类型的大小(4)
+     // 数组列数为：
+     sizeof(example[0])/sizeof(int)      // sizeof(example[0])为该数组一行的大小(这里是10)
+     // 数组行数则为 ：
+     ( sizeof(example) / sizeof(int) )/ ( sizeof(example[0]) / sizeof(int) )
+     // 即是数组总数除以列数，化简就是 sizeof(example) / sizeof(example[0])
+     */
+    
+    /* Accelerate/Accelerate.h https://developer.apple.com/documentation/accelerate
+     
+       vDSP API https://developer.apple.com/library/content/documentation/Performance/Conceptual/vDSP_Programming_Guide/About_vDSP/About_vDSP.html#//apple_ref/doc/uid/TP40005147-CH2-SW1
+       vDSP_xxx 单精度浮点型  vDSP_xxxD双精度浮点型 vDSP_xxxi 整型
+       vDSP_Stride __IA 步幅 1为逐点计算 2为间隔一位计算，一般为1
+       vDSP_Length __N  m*n m行n列矩阵的行数，矩阵乘法需满足矩阵 m*n x n*H = m*h
+     */
     
     
-    float matrixA [3][3] = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
     
-    float matrixB [3][1] = {{3}, {5}, {9}};
-
-    float results [3][1];
+//    DSPComplex dfsfd = {real:3.0 ,imag:4.0};
+# pragma mark - 矩阵运算
+    /* 二位数组指针
+     一维元素个数可以省略，二维必须声明
+     matrixA[0] === matrixA === &matrixA[0][0]
+     matrixA[1] === matrixA + 1 === &matrixA[1][0]
+     */
     
-    vDSP_mmul(&matrixA[0][0], 1, &matrixB[0][0], 1, &results[0][0], 1, 3, 1, 3);
+    /* 矩阵相除 vDSP_mmul */
+    float matrixA [3][3] = {{1, 2, 1},
+                                {3, 1, 2},
+                                {2, 1, 2}};
     
-    NSLog(@"vDSP_mmul :%f %f %f",results[0][1],results[1][1],results[2][1]);
-
-    // 矩阵相乘，在加第三个矩阵
-    vDSP_zmma(<#const DSPSplitComplex * _Nonnull __A#>, <#vDSP_Stride __IA#>, <#const DSPSplitComplex * _Nonnull __B#>, <#vDSP_Stride __IB#>, <#const DSPSplitComplex * _Nonnull __C#>, <#vDSP_Stride __IC#>, <#const DSPSplitComplex * _Nonnull __D#>, <#vDSP_Stride __ID#>, <#vDSP_Length __M#>, <#vDSP_Length __N#>, <#vDSP_Length __P#>)
-//    vDSP_vsaddD(v, 1, &s, &vsresult, 1, vDSP_Length(v.count))
-//    vsresult    // returns [7.0, 8.0]
+    float matrixB [3][1] = {{3},
+                                {5},
+                                {9}};
     
-//    vDSP_vsubD(m1, 1, m2, 1, 1, 1, 1);
+    float matrixC [3][1] = {3,5,9};
     
+    float results [3][1] = {0};
+    float resultss [3][1] = {0};
+    
+    vDSP_mmul(&matrixA[0][0], 1, &matrixB[0][0], 1, &results[0][0], 1, sizeof(matrixA) / sizeof(matrixA[0]), sizeof(matrixB[0]) / sizeof(float), sizeof(matrixA[0]) / sizeof(float));
+    
+    vDSP_vadd(results, 1, matrixC, 1, resultss, 1, 3);
+    
+    NSLog(@"矩阵运算(单精度浮点型) :%f %f %f",resultss[0][0],resultss[1][0],resultss[2][0]);
+    
+//    1492532240 1492532252 1492532240
+    
+    /* 矩阵相乘，在加第三个矩阵 vDSP_zmma */
+//    DSPSplitComplex complexA;
+//    complexA.realp = &matrixA[0][0];
+//    complexA.imagp = {0};
+//
+//    DSPSplitComplex complexB;
+//    complexB.realp = &matrixB[0][0];
+//
+//    DSPSplitComplex complexC;
+//    complexC.realp = &matrixC[0][0];
+//
+//    DSPSplitComplex complexD;
+//    complexD.realp = &results[0][0];
+//
+//    vDSP_zmma(&complexA, 1, &complexB, 1, &complexC, 1, &complexD, 1, 3, 1, 3);
+//
+//    NSLog(@"矩阵运算(单精度浮点型) :%f %f %f",*(complexD.realp),*(complexD.realp + 1),results[2][0]);
+    
+# pragma mark - 向量运算
+//    const float v[] = {4.0,7.0};
+//    const float s[] = {2.0,7.0};
+//    float results[2];
+    
+    /* 向量相加 vDSP_vadd */
+//    vDSP_vadd(v, 1, s, 1, results, 1, sizeof(v) / sizeof(float));
+    
+    /* 向量相乘 vDSP_vmul */
+//    vDSP_vmul(v, 1, s, 1, results, 1, sizeof(v) / sizeof(float));
+    
+    /* 向量相除 vDSP_vdiv */
+//    vDSP_vdiv(v, 1, s, 1, results, 1, sizeof(v) / sizeof(float));
+    
+    //    点乘的几何意义是可以用来表征或计算两个向量之间的夹角，以及在b向量在a向量方向上的投影，有公式：
+    /* 向量点乘 vDSP_dotpr */
+//    float dfdf;
+//    vDSP_dotpr(v, 1, s, 1, &dfdf, sizeof(v) / sizeof(float));
+    
+    /***************************************************************/
+    
+//    const float v[] = {4.0,7.0};
+//    const float s = 3.0;
+//    float results[2];
+    
+    /* 向量和常数相除 vDSP_vsdiv */
+//    vDSP_vsdiv(v, 1, &s, results, 1, sizeof(v) / sizeof(float));
+    
+    /* 向量和常数相乘 vDSP_vsmul */
+//    vDSP_vsmul(v, 1, &s, results, 1, sizeof(v) / sizeof(float));
+    
+    /* 向量和常数相加 vDSP_vsadd */
+//    vDSP_vsadd(v, 1, &s, results, 1, sizeof(v) / sizeof(float));
+    
+//    NSLog(@"向量和常数运算(单精度浮点型) :%f %f ",*results,*(results+1));
+//    NSLog(@"向量运算(单精度浮点型) :%f %f ",*results,*(results+1));
 }
 
 - (void)captureOutput:(AVCaptureOutput *)output didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection
@@ -108,6 +191,8 @@
     //CVPixelBufferGetPlaneCount得到像素缓冲区平面数量，然后由CVPixelBufferGetBaseAddressOfPlane(索引)得到相应的通道，一般是Y、U、V通道存
     size_t planeCount = CVPixelBufferGetPlaneCount(imageBuffer);
     
+
+
     
     // 从容器中提取YUV数据
 //    CVPixelBufferLockBaseAddress(imageBuffer, kCVPixelBufferLock_ReadOnly);
