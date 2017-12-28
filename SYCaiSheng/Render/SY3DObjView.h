@@ -13,7 +13,7 @@
 
 - (id)initWithFrame:(CGRect)frame;
 
-- (void)reloadObjData;
+- (void)drawModelWithScale:(CGFloat)scale X:(CGFloat)x Y:(CGFloat)y;
 
 @end
 

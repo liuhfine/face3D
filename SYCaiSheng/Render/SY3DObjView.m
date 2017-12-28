@@ -9,24 +9,26 @@
 #import "SY3DObjView.h"
 #import <OpenGLES/ES2/gl.h>
 #import <GLKit/GLKit.h>
+#import <Accelerate/Accelerate.h>
+
 #import "ShaderProcessor.h"
 #import "Transformations.h"
 
-#import "facegenOBJ.h"
-#import "FaceGenMTL.h"
-#import "cubeOBJ.h"
-#import "cubeMTL.h"
+#import "jixiangwuOBJ.h"
+#import "outMTL.h"
+#import "EyeBlink_L_new.h"
+#import "JawOpen_new.h"
 
 #define STRINGIFY(A) #A
 #import "Shader.fsh"
 #import "Shader.vsh"
-
 
 struct AttributeHandles
 {
     GLint   aVertex;
     GLint   aNormal;
     GLint   aTexture;
+    GLint   aDelta;
 };
 
 struct UniformHandles
@@ -66,6 +68,7 @@ struct UniformHandles
     
     struct AttributeHandles _attributes;
     struct UniformHandles   _uniforms;
+    
 }
 @property (strong, nonatomic) EAGLContext* glContext;
 @property (strong, nonatomic) CAEAGLLayer *eaglLayer;
@@ -205,9 +208,10 @@ struct UniformHandles
     self.transformations = [[Transformations alloc] initWithDepth:5.0f Scale:5.0f Translation:GLKVector2Make(0.0f, 0.0f) Rotation:GLKVector3Make(0.0f, 0.0f, 0.0f)];
     
     // Load Texture
-    [self loadTexture:@"facegen_eyel_hi.jpg"];
-    [self loadTexture:@"facegen_eyer_hi.jpg"];
-    [self loadTexture:@"new_face_img.jpg"]; // facegen_skin_hi
+    [self loadTexture:@"meimao.jpg"];
+    [self loadTexture:@"tou.jpg"];
+    [self loadTexture:@"YJ.jpg"];
+
 
     // Create the GLSL program
     _program = [self.shaderProcessor BuildProgram:ShaderV with:ShaderF];
@@ -217,6 +221,7 @@ struct UniformHandles
     _attributes.aVertex = glGetAttribLocation(_program, "aVertex");
     _attributes.aNormal = glGetAttribLocation(_program, "aNormal");
     _attributes.aTexture = glGetAttribLocation(_program, "aTexture");
+    _attributes.aDelta = glGetAttribLocation(_program, "aDelta");
     
     // Extract the uniform handles
     _uniforms.uProjectionMatrix = glGetUniformLocation(_program, "uProjectionMatrix");
@@ -233,25 +238,46 @@ struct UniformHandles
 //    glUniform1i(_uniforms.uTexture, 0);
 //    glUniform1i(_uniforms.uTexture, 1);
 //    glUniform1i(_uniforms.uTexture, 2);
+    
+//    [self loadVertexForVBO:nil :nil :nil :nil];
 }
 
-- (void)loadVertexForVBO
+- (void)loadVertexForVBO:(float *)vertexs :(float *)normals :(float *)colors :(int *)indexs
 {
+    float vertex[] = {
+        1.0, 0.0, 0.0,
+        0.0, 1.0, 0.0,
+        -0.7, -0.7, 0.0,
+        0.0, 0.0, 1.0,
+    };
+    
+    float index[] = {
+        1.0, 2.0, 3.0,
+        1.0, 2.0, 4.0,
+        2.0, 3.0, 4.0,
+        1.0, 3.0, 4.0,
+    };
+    
     GLuint vertexbo;
     // 创建顶点缓存对象
     glGenBuffers(1, &vertexbo);
     // 指定绑定的目标，取值为 GL_ARRAY_BUFFER（用于顶点数据） 或 GL_ELEMENT_ARRAY_BUFFER（用于索引数据）；
     glBindBuffer(GL_ARRAY_BUFFER, vertexbo);
     // 为顶点缓存对象分配空间 并将数据缓存
-    glBufferData(GL_ARRAY_BUFFER, sizeof(facegenOBJVerts), facegenOBJVerts, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertex), NULL, GL_STATIC_DRAW); //  + sizeof(normals) + sizeof(colors)
     
-    /* index buffer object ibo fece 顶点索引
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertex), vertex);
+//    glBufferSubData(GL_ARRAY_BUFFER, sizeof(vertexs), sizeof(normals), normals);
+//    glBufferSubData(GL_ARRAY_BUFFER, sizeof(vertexs) + sizeof(normals), sizeof(colors), colors);
+    
+    // index buffer object ibo fece 顶点索引
     GLuint indexbo;
     glGenBuffers(1, &indexbo);//创建ibobuffer
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexbo);//指定buffer类型
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indexBuf), indexBuf, GL_STATIC_DRAW); //上传数据到buffer
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);//解除绑定
-     */
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(index), index, GL_STATIC_DRAW); //上传数据到buffer
+    
+//    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);//解除绑定
+ 
 }
 
 - (void)loadTexture:(NSString *)fileName
@@ -261,6 +287,7 @@ struct UniformHandles
     NSError* error;
     NSString* path = [[NSBundle mainBundle] pathForResource:fileName ofType:nil];
     GLKTextureInfo* texture = [GLKTextureLoader textureWithContentsOfFile:path options:options error:&error];
+    
     if(texture == nil)
         NSLog(@"Error loading file: %@", [error localizedDescription]);
     
@@ -272,6 +299,7 @@ struct UniformHandles
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     
+    NSLog(@"glBindTexture id : %d", texture.name);
 }
 
 - (void)updateViewMatrices
@@ -288,10 +316,12 @@ struct UniformHandles
 
 #pragma mark - reloadData
 static float rotationX;
-- (void)reloadObjData
+static int num = 0;
+- (void)drawModelWithScale:(CGFloat)scale X:(CGFloat)x Y:(CGFloat)y
 {
     const float m = GLKMathDegreesToRadians(0.5f);
-    [self.transformations rotate:GLKVector3Make(rotationX+=30.0f, 0.0f, 0.0f) withMultiplier:m];
+    num += 1; // rotationX+=5
+    [self.transformations rotate:GLKVector3Make(0.0f, y, 0.0f) withMultiplier:m];
     
     if (!self.window)
     {
@@ -303,7 +333,6 @@ static float rotationX;
     }
 }
 
-static int num = 0;
 - (void)render {
     
     // Clear Buffers
@@ -315,6 +344,7 @@ static int num = 0;
     glUniformMatrix4fv(_uniforms.uProjectionMatrix, 1, 0, _projectionMatrix.m);
     glUniformMatrix4fv(_uniforms.uModelViewMatrix, 1, 0, _modelViewMatrix.m);
     glUniformMatrix3fv(_uniforms.uNormalMatrix, 1, 0, _normalMatrix.m);
+//
     
     // Attach Texture
 //    glUniform1i(_uniforms.uTexture, 0);
@@ -323,15 +353,28 @@ static int num = 0;
     glUniform1i(_uniforms.uMode, 1);
     
     /* Load OBJ Data 没使用VBO，每次渲染都从CPU拷贝顶点数据到GPU */
-    glVertexAttribPointer(_attributes.aVertex, 3, GL_FLOAT, GL_FALSE, 0, facegenOBJVerts);      // facegenOBJVerts cubeOBJVerts
+    glVertexAttribPointer(_attributes.aVertex, 3, GL_FLOAT, GL_FALSE, 0, jixiangwuOBJVerts);
     glEnableVertexAttribArray(_attributes.aVertex);
-     
-    glVertexAttribPointer(_attributes.aNormal, 3, GL_FLOAT, GL_FALSE, 0, facegenOBJNormals);    // facegenOBJNormals cubeOBJNormals
+
+    glVertexAttribPointer(_attributes.aNormal, 3, GL_FLOAT, GL_FALSE, 0, jixiangwuOBJNormals);
     glEnableVertexAttribArray(_attributes.aNormal);
-    
-    glVertexAttribPointer(_attributes.aTexture, 2, GL_FLOAT, GL_FALSE, 0, facegenOBJTexCoords); // facegenOBJTexCoords cubeOBJTexCoords
+
+    glVertexAttribPointer(_attributes.aTexture, 2, GL_FLOAT, GL_FALSE, 0, jixiangwuOBJTexCoords);
     glEnableVertexAttribArray(_attributes.aTexture);
     
+    if (num % 5 == 0) {
+        glDisableVertexAttribArray(_attributes.aDelta);
+        glVertexAttribPointer(_attributes.aDelta, 3, GL_FLOAT, GL_FALSE, 0, EyeBlink_L_new);
+        glEnableVertexAttribArray(_attributes.aDelta);
+    }
+    
+    if (num % 13 == 0)
+    {
+        glDisableVertexAttribArray(_attributes.aDelta);
+        glVertexAttribPointer(_attributes.aDelta, 3, GL_FLOAT, GL_FALSE, 0, JawOpen_new);
+        glEnableVertexAttribArray(_attributes.aDelta);
+    }
+
     /* VBO 预加载顶点数据，存储至图形卡缓存上
     glVertexAttribPointer(_attributes.aVertex, 3, GL_FLOAT, GL_FALSE, 0, 0);//顶点坐标起始位置
     glEnableVertexAttribArray(_attributes.aVertex);
@@ -341,24 +384,38 @@ static int num = 0;
 //    glEnableVertexAttribArray(_attributes.aTexture);
     */
 
-    for(int i=0; i<FaceGenMTLNumMaterials; i++)
+    for(int i=0; i<outMTLNumMaterials; i++)
     {
-        glUniform3f(_uniforms.uAmbient, FaceGenMTLAmbient[i][0], FaceGenMTLAmbient[i][1], FaceGenMTLAmbient[i][2]);
-        glUniform3f(_uniforms.uDiffuse, FaceGenMTLDiffuse[i][0], FaceGenMTLDiffuse[i][1], FaceGenMTLDiffuse[i][2]);
-        glUniform3f(_uniforms.uSpecular, FaceGenMTLSpecular[i][0], FaceGenMTLSpecular[i][1], FaceGenMTLSpecular[i][2]);
-        glUniform1f(_uniforms.uExponent, FaceGenMTLExponent[i]);
+        glUniform3f(_uniforms.uAmbient, outMTLAmbient[i][0], outMTLAmbient[i][1], outMTLAmbient[i][2]);
+        glUniform3f(_uniforms.uDiffuse, outMTLDiffuse[i][0], outMTLDiffuse[i][1], outMTLDiffuse[i][2]);
+        glUniform3f(_uniforms.uSpecular, outMTLSpecular[i][0], outMTLSpecular[i][1], outMTLSpecular[i][2]);
+        glUniform1f(_uniforms.uExponent, outMTLExponent[i]);
 
-        glUniform1i(_uniforms.uTexture, i);
+        if (i < 2) {
+            glUniform1i(_uniforms.uTexture, 1);
+        }
+        if (i == 3) {
+            glUniform1i(_uniforms.uTexture, 2);
+        }
+
         // Draw scene by material group
-        glDrawArrays(GL_TRIANGLES, FaceGenMTLFirst[i], FaceGenMTLCount[i]);
+        glDrawArrays(GL_TRIANGLES, outMTLFirst[i], outMTLCount[i]);
     }
-
+    
+//    glDrawElements(GL_TRIANGLES, 4, GL_UNSIGNED_BYTE, 0);
+    
+    
+//    glDrawArrays(GL_TRIANGLES, 0, jixiangwuOBJNumVerts);
+    
     // Disable Attributes
     glDisableVertexAttribArray(_attributes.aVertex);
     glDisableVertexAttribArray(_attributes.aNormal);
     glDisableVertexAttribArray(_attributes.aTexture);
+    glDisableVertexAttribArray(_attributes.aDelta);
     
 //    glBindBuffer(GL_ARRAY_BUFFER, 0);//解除VBO绑定
+//    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    
     glBindRenderbuffer(GL_RENDERBUFFER, _renderBuffer);
     [_glContext presentRenderbuffer:GL_RENDERBUFFER];
     
@@ -384,7 +441,6 @@ static int num = 0;
         glDeleteFramebuffers(1, &_framebuffer);
         _framebuffer = 0;
     }
-    
     
     if (_renderBuffer) {
         glDeleteRenderbuffers(1, &_renderBuffer);

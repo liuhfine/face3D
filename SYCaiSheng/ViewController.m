@@ -8,27 +8,48 @@
 
 #import <AVFoundation/AVFoundation.h>
 #import <Accelerate/Accelerate.h>
-#import "ViewController.h"
-//#import "SYSunnyMovieGLView.h"
-#import "SY3DObjView.h"
+#import <ULSMultiTrackeriOSSDK/ULSMultiTrackeriOSSDK.h>
 
+#import "ViewController.h"
+#import "SY3DObjView.h"
+#import "DlibWrapper.h"
 
 
 #define Color [UIColor colorWithRed:237/255.0 green:82/255.0 blue:41/255.0 alpha:1]
 
+#define MAXFACES 5
+
+//Please put your activation key here
+#ifndef ACTIVE_KEY
+#define ACTIVE_KEY @"TIDI4knKR34fNRCznsAPnvDfnrntOMTp"
+#endif
+
 @interface ViewController ()
 <
- AVCaptureVideoDataOutputSampleBufferDelegate
+ AVCaptureVideoDataOutputSampleBufferDelegate,
+ AVCaptureMetadataOutputObjectsDelegate
 >
 {
     SY3DObjView *_objView;
+    DlibWrapper *_wrapper;
+    
+    
+    ULSMultiTrackeriOSSDK *_multiTrackerSDK;
+    CGRect _faceRect[MAXFACES];
+    int _faceRectCount;
+    float _rollAngle[MAXFACES];
+    
 }
 @property (nonatomic, strong) AVCaptureSession *session;
-@property (nonatomic, strong) AVCaptureDeviceInput *input;
-@property (nonatomic, strong) AVCaptureVideoDataOutput *output;
 
 @property (nonatomic, strong) AVCaptureVideoPreviewLayer *captureVideoPreviewLayer;
+@property (nonatomic, strong) AVSampleBufferDisplayLayer *displayLayer;
 @property (nonatomic, strong) AVCaptureConnection *videoConnection;
+@property (nonatomic, strong) CALayer *faceLayer;
+@property (nonatomic, strong) NSArray *currentMetadata;
+
+@property (nonatomic, strong) CIDetector *ciFaceDetector;
+@property (nonatomic, strong) CIContext *ciContext;
 
 @property (nonatomic, strong) UIView *scanPreviewView;
 @end
@@ -53,26 +74,23 @@
     
     _objView = [[SY3DObjView alloc] initWithFrame:centerRect1];
     [self.view insertSubview:_objView atIndex:0];
-
 }
 
 - (void)viewDidAppear:(BOOL)animated
 {
-
-//    for (int i=0; i<10; i++) {
-        [_objView reloadObjData];
-//    }
-    
+    [_objView drawModelWithScale:1.0 X:0.0 Y:0.0];
 }
 
+#pragma mark - userEvent
 - (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event {
 }
 
 - (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event {
-    [_objView reloadObjData];
+    
+    [_objView drawModelWithScale:1.0 X:0.0 Y:0.0];
 }
 
-
+# pragma mark - matrix
 - (void)matrix
 {
     /*
@@ -97,7 +115,7 @@
     
     
 //    DSPComplex dfsfd = {real:3.0 ,imag:4.0};
-# pragma mark - 矩阵运算
+#warning 矩阵运算
     /* 二位数组指针
      一维元素个数可以省略，二维必须声明
      matrixA[0] === matrixA === &matrixA[0][0]
@@ -144,7 +162,7 @@
 //
 //    NSLog(@"矩阵运算(单精度浮点型) :%f %f %f",*(complexD.realp),*(complexD.realp + 1),results[2][0]);
     
-# pragma mark - 向量运算
+#warning 向量运算
 //    const float v[] = {4.0,7.0};
 //    const float s[] = {2.0,7.0};
 //    float results[2];
@@ -182,38 +200,270 @@
 //    NSLog(@"向量运算(单精度浮点型) :%f %f ",*results,*(results+1));
 }
 
+#pragma mark - captureVideo
+- (void)captureOutput:(AVCaptureOutput *)output didOutputMetadataObjects:(NSArray<__kindof AVMetadataObject *> *)metadataObjects fromConnection:(AVCaptureConnection *)connection
+{
+    if (metadataObjects.count > 0) {
+        
+        _currentMetadata = metadataObjects;
+
+//        for ( AVMetadataObject *object in metadataObjects ) {
+//
+//            if ( [object.type isEqual:AVMetadataObjectTypeFace] ) {
+//
+//                AVMetadataFaceObject* face = (AVMetadataFaceObject*)object;
+//                AVMetadataObject *convertedObject = [output transformedMetadataObjectForMetadataObject:face connection:connection];
+//                newFaceBounds =convertedObject.bounds;
+//                [boundsArray addObject:[NSValue valueWithCGRect:newFaceBounds]];
+//
+//                NSLog(@"---------xy:(%f,%f) wh:(%f,%f)",convertedObject.bounds.origin.x,convertedObject.bounds.origin.y,convertedObject.bounds.size.width,convertedObject.bounds.size.height);
+//
+//
+//            }
+//        }
+    }
+    else
+    {
+        _currentMetadata = nil;
+//        if (_displayLayer.sublayers.count > 1)
+//        {
+//            CALayer *layer = [_displayLayer.sublayers lastObject];
+//            [layer removeFromSuperlayer];
+//        }
+    }
+    
+    
+//    if (metadataObjects.count > 0) {
+////        _currentMetadata = metadataObjects;
+//        AVMetadataMachineReadableCodeObject *metadataObject = [metadataObjects objectAtIndex :0];
+//        if (metadataObject.type == AVMetadataObjectTypeFace) {
+//
+//            NSMutableArray *arr = [NSMutableArray arrayWithCapacity:0];
+//
+//            for (AVMetadataObject *item in metadataObjects) {
+////
+//                AVMetadataObject *convertedObject = [output transformedMetadataObjectForMetadataObject:item connection:connection];
+////                NSValue *faceBounds = [NSValue valueWithCGRect:convertedObject.bounds];
+////
+////                CGRect rect = [faceBounds CGRectValue];
+//                AVMetadataFaceObject* face = (AVMetadataFaceObject*)item;
+//
+//
+//
+//
+//
+////                [arr addObject:faceBounds];
+//            }
+//            _currentMetadata = arr;
+//        }
+//    }
+    
+}
+
+- (void)captureOutput:(AVCaptureOutput *)captureOutput didDropSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection{
+    NSLog(@"DidDropSampleBuffer 延迟帧丢弃");
+
+}
+
 - (void)captureOutput:(AVCaptureOutput *)output didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection
 {
-    CVImageBufferRef imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
-    size_t width = CVPixelBufferGetWidth(imageBuffer);
-    size_t height = CVPixelBufferGetHeight(imageBuffer);
-    
-    //CVPixelBufferGetPlaneCount得到像素缓冲区平面数量，然后由CVPixelBufferGetBaseAddressOfPlane(索引)得到相应的通道，一般是Y、U、V通道存
-    size_t planeCount = CVPixelBufferGetPlaneCount(imageBuffer);
-    
-
-
-    
-    // 从容器中提取YUV数据
-//    CVPixelBufferLockBaseAddress(imageBuffer, kCVPixelBufferLock_ReadOnly);
-//    void *y_bity = CVPixelBufferGetBaseAddressOfPlane(imageBuffer, 0);
-//    void *u_bity = CVPixelBufferGetBaseAddressOfPlane(imageBuffer, 1);
-//    void *v_bity = CVPixelBufferGetBaseAddressOfPlane(imageBuffer, 2);
  
-//    void *yuvData = malloc(width*height*3);
-//    for (int line=0; line<yuvData; ++line) {
-//        memcmp(yuvData + line*, 1, 2)
+    CGRect newFaceBounds;
+    NSMutableArray *boundsArray = [[NSMutableArray alloc]init];
+    
+    NSArray *arr = _currentMetadata;
+    if (arr.count > 0) {
+
+        for ( AVMetadataObject *object in arr) {
+
+            if ( [[object type] isEqual:AVMetadataObjectTypeFace] ) {
+
+                AVMetadataFaceObject* face = (AVMetadataFaceObject*)object;
+                AVMetadataObject *convertedObject = [output transformedMetadataObjectForMetadataObject:face connection:connection];
+                newFaceBounds =convertedObject.bounds;
+                [boundsArray addObject:[NSValue valueWithCGRect:newFaceBounds]];
+
+//                NSLog(@"---------xy:(%f,%f) wh:(%f,%f)",convertedObject.bounds.origin.x,convertedObject.bounds.origin.y,convertedObject.bounds.size.width,convertedObject.bounds.size.height);
+                
+/*              精度太低45°
+                if (face.hasYawAngle)
+                {
+                    CGFloat dd = face.yawAngle * (M_PI /180.0f) ;
+                    
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        [_objView drawModelWithScale:1.0 X:dd*50 Y:0.0];
+                    });
+                    
+                    NSLog(@">>>>>>>>>>> yawAngle:%f",dd);
+                }
+
+                if (face.hasRollAngle)
+                {
+                    CGFloat dd = face.rollAngle * (float)M_PI /180.0f;
+                    
+                    NSLog(@">>>>>>>>>>> rollAngle:%f",dd);
+                }
+ 
+ if (_faceLayer.superlayer) {
+ _faceLayer.frame = convertedObject.bounds;
+ }else
+ {
+ CALayer *layer = [[CALayer alloc] init];
+ layer.frame = convertedObject.bounds;
+ layer.borderColor = [UIColor cyanColor].CGColor;
+ layer.borderWidth = 2;
+ [self.view.layer insertSublayer:layer above:_displayLayer];
+ _faceLayer = layer;
+ }
+ 
+*/
+
+            }
+        }
+
+//        [_wrapper doWorkOnSampleBuffer:sampleBuffer inRects:boundsArray];
+    }
+    
+    if ([_displayLayer isReadyForMoreMediaData]) {
+        [_displayLayer enqueueSampleBuffer:sampleBuffer];
+    }
+    CVImageBufferRef imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
+    
+    /************/
+//    CVPixelBufferLockBaseAddress(imageBuffer,0);        // Lock the image buffer
+//
+//    uint8_t *baseAddress = (uint8_t *)CVPixelBufferGetBaseAddressOfPlane(imageBuffer, 0);   // Get information of the image
+//    size_t bytesPerRow = CVPixelBufferGetBytesPerRow(imageBuffer);
+//    size_t width = CVPixelBufferGetWidth(imageBuffer);
+//    size_t height = CVPixelBufferGetHeight(imageBuffer);
+//    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+//
+//    CGContextRef newContext = CGBitmapContextCreate(baseAddress, width, height, 8, bytesPerRow, colorSpace, kCGBitmapByteOrder32Little | kCGImageAlphaPremultipliedFirst);
+//    CGImageRef newImage = CGBitmapContextCreateImage(newContext);
+//    CGContextRelease(newContext);
+//    CGImageGetWidth(newImage);
+//
+//
+//    CGColorSpaceRelease(colorSpace);
+//    CVPixelBufferUnlockBaseAddress(imageBuffer,0);
+    
+//    CFDictionaryRef attachments = CMCopyDictionaryOfAttachments(kCFAllocatorDefault, sampleBuffer, kCMAttachmentMode_ShouldPropagate);
+//    CIImage* ciImage = [CIImage imageWithCVPixelBuffer:imageBuffer options:(__bridge NSDictionary<NSString *,id> * _Nullable)(attachments)];
+    
+    
+//    CIImage* ciImage = [CIImage imageWithCVPixelBuffer:imageBuffer];
+//
+//    if (!_ciFaceDetector) {
+//
+//        _ciContext = [CIContext contextWithOptions:@{kCIContextUseSoftwareRenderer : @(YES)}];
+//
+//        _ciFaceDetector = [CIDetector detectorOfType:CIDetectorTypeFace context:_ciContext options:@{CIDetectorAccuracy: CIDetectorAccuracyHigh}];
 //    }
-//    NSLog(@"is video frame width:%d  planeCount:%d",CVPixelBufferGetPixelFormatType(imageBuffer),planeCount);
+//
+//    NSArray *faces = [_ciFaceDetector featuresInImage:ciImage options:@{CIDetectorImageOrientation:@8}];
+//
+//    for (CIFaceFeature * faceFeature in faces) {
+//
+//        CGRect faceRect = [faceFeature bounds];
+//
+////        faceFeature.hasFaceAngle
+//        NSLog(@"%f  %f  %f  %f  ",faceRect.origin.x,faceRect.origin.y,faceRect.size.width,faceRect.size.height);
+//    }
+//
+
 
 }
 
 
-- (void)createCamera
-{
+/**
+ 获取样本格式信息
+ */
+- (CMMediaType)mediaTypeWithData:(CMSampleBufferRef)sampleBuffer {
+    CMFormatDescriptionRef formatType = CMSampleBufferGetFormatDescription(sampleBuffer);
+    return CMFormatDescriptionGetMediaType(formatType);
+}
+
+- (void)yuvWithData:(CMSampleBufferRef)sampleBuffer {
+    
+    //CVPixelBufferGetPlaneCount得到像素缓冲区平面数量，然后由CVPixelBufferGetBaseAddressOfPlane(索引)得到相应的通道，一般是Y、UV通道存
+    //    /* 从容器中提取YUV数据
+    CVPixelBufferRef pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
+    
+    size_t width = CVPixelBufferGetWidth(pixelBuffer);
+    size_t height = CVPixelBufferGetHeight(pixelBuffer);
+    
+    if (CVPixelBufferGetPixelFormatType(pixelBuffer) == kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange) {
+        
+        size_t planeCount = CVPixelBufferGetPlaneCount(pixelBuffer);
+        
+        CVPixelBufferLockBaseAddress(pixelBuffer, 0);
+        if (planeCount == 2) {
+            uint8_t *y_bity = CVPixelBufferGetBaseAddressOfPlane(pixelBuffer, 0);
+            uint8_t *uv_bity = CVPixelBufferGetBaseAddressOfPlane(pixelBuffer, 1);
+        }
+        if (planeCount == 3) {
+            uint8_t *y_bity = CVPixelBufferGetBaseAddressOfPlane(pixelBuffer, 0);
+            uint8_t *u_bity = CVPixelBufferGetBaseAddressOfPlane(pixelBuffer, 1);
+            uint8_t *v_bity = CVPixelBufferGetBaseAddressOfPlane(pixelBuffer, 2);
+        }
+        
+//        uint8_t *yuv_frame = malloc(width * height *3/2);
+//        memcpy(yuv_frame, y_bity, width * height);
+//        memcpy(yuv_frame + width * height, uv_bity, width * height/2);
+        
+        CVPixelBufferUnlockBaseAddress(pixelBuffer, 0);
+        
+//        CVPixelBufferLockBaseAddress(pixelBuffer, 0);
+//
+//        size_t bufWidth = CVPixelBufferGetWidth(pixelBuffer);
+//        size_t bufHeight = CVPixelBufferGetHeight(pixelBuffer);
+//
+//        unsigned char *pixel = (unsigned char *)CVPixelBufferGetBaseAddress(pixelBuffer);
+//
+//        uint8_t *yuv_frame = malloc(bufWidth * bufHeight *3/2);
+//
+//        memcpy(yuv_frame, pixel, bufWidth * bufHeight);
+//        memcpy(yuv_frame+bufWidth * bufHeight, pixel, bufWidth * bufHeight);
+//        
+//        CVPixelBufferUnlockBaseAddress(pixelBuffer, 0);
+    }
+    
+    if (CVPixelBufferGetPixelFormatType(pixelBuffer) == kCVPixelFormatType_32BGRA) {
+        
+    }
+    
+
+}
+
+- (void)grayWithData:(CMSampleBufferRef)sampleBuffer {
+    const int BYTES_PER_PIXEL = 4;
+    CVPixelBufferRef pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
+    
+    CVPixelBufferLockBaseAddress(pixelBuffer, 0);
+    
+    size_t bufWidth = CVPixelBufferGetWidth(pixelBuffer);
+    size_t bufHeight = CVPixelBufferGetHeight(pixelBuffer);
+    
+    unsigned char *pixel = (unsigned char *)CVPixelBufferGetBaseAddress(pixelBuffer);
+    unsigned char grayPixel;
+    
+    for (int row=0; row < bufHeight; ++row) {
+        for (int col=0; col < bufWidth; ++col) {
+            grayPixel = (pixel[0] + pixel[1] + pixel[2]) / 3;
+            pixel[0] = pixel[1] = pixel[2] = grayPixel;
+            
+            pixel += BYTES_PER_PIXEL;
+        }
+    }
+    
+    CVPixelBufferUnlockBaseAddress(pixelBuffer, 0);
+}
+
+- (void)changeCameraAtPosition:(AVCaptureSession *)session {
+    
     AVCaptureDevice *device;
     NSString *version = [UIDevice currentDevice].systemVersion;
-    // 获取硬件设备
+    
     if (version.doubleValue <= 10.0) {
         device = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo].firstObject;
     } else {
@@ -224,28 +474,67 @@
         }
     }
     
+    [session beginConfiguration];
     // 初始化设备输入对象
     NSError *error;
     AVCaptureDeviceInput *input = [AVCaptureDeviceInput deviceInputWithDevice:device error:&error];
-    self.input = input;
     
-    // AVCaptureMetadataOutput 二维码数据
-    self.output = [[AVCaptureVideoDataOutput alloc] init];
-    //创建线程获取数据，捕获视频帧
-    dispatch_queue_t captureQueue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
-    [self.output setSampleBufferDelegate:self queue:captureQueue];
-    // 抛弃过期帧
-    [self.output setAlwaysDiscardsLateVideoFrames:YES];
-    //设置输出格式为 yuv420 nv12 kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange   420p kCVPixelFormatType_420YpCbCr8PlanarFullRange
-    [self.output setVideoSettings:@{
-                                    (__bridge NSString *)kCVPixelBufferPixelFormatTypeKey:@(kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange)
-                                    }];
-    
-    // 保存Connection，用于在SampleBufferDelegate中判断数据来源（是Video/Audio？）
-//    self.videoConnection = [self.output connectionWithMediaType:AVMediaTypeVideo];
+    if (!error) {
+        for (AVCaptureInput *dv in session.inputs) {
+            if ([[dv.ports firstObject] isEqual:AVMediaTypeAudio]) {
+                [session removeInput:dv];
+            }
+        }
+        
+        if ([session canAddInput:input])
+            [session addInput:input];
+        
+        session.sessionPreset = AVCaptureSessionPresetHigh;
+    }
+
+    [session commitConfiguration];
+}
+
+- (void)createCamera
+{
+//    _wrapper = [[DlibWrapper alloc] init];
     
     // 创建媒体会话
     self.session = [[AVCaptureSession alloc] init];
+    //创建线程获取数据，捕获视频帧
+//    dispatch_queue_t captureQueue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
+//    dispatch_queue_t faceQueue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
+    
+    // 串行队列：DISPATCH_QUEUE_SERIAL 并发队列：DISPATCH_QUEUE_CONCURRENT
+    dispatch_queue_t captureQueue = dispatch_queue_create("com.capturehl.www", DISPATCH_QUEUE_SERIAL);
+    dispatch_queue_t faceQueue = dispatch_queue_create("com.facehl.www", DISPATCH_QUEUE_SERIAL);
+    
+    
+    AVCaptureDevice *device;
+    NSString *version = [UIDevice currentDevice].systemVersion;
+    
+//    AVCaptureDevice *videoDevice = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
+    
+    // 获取硬件设备
+    if (version.doubleValue <= 10.0) {
+        device = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo].firstObject;
+    } else {
+        if (@available(iOS 10.0, *)) {
+            device = [AVCaptureDevice defaultDeviceWithDeviceType:AVCaptureDeviceTypeBuiltInWideAngleCamera mediaType:AVMediaTypeVideo position:AVCaptureDevicePositionFront];
+        } else {
+            // Fallback on earlier versions
+        }
+    }
+    // 初始化设备输入对象
+    NSError *error;
+    AVCaptureDeviceInput *input = [AVCaptureDeviceInput deviceInputWithDevice:device error:&error];
+    
+    // AVCaptureMetadataOutput
+    AVCaptureVideoDataOutput *outVideodata = [[AVCaptureVideoDataOutput alloc] init];
+    AVCaptureMetadataOutput *outMetadata = [[AVCaptureMetadataOutput alloc] init];
+    
+    [outMetadata setMetadataObjectsDelegate:self queue:faceQueue];
+    [outVideodata setSampleBufferDelegate:self queue:captureQueue];
     
     [self.session beginConfiguration];
     
@@ -255,22 +544,60 @@
     if ([self.session canAddInput:input])
         [self.session addInput:input];
     
-    if ([self.session canAddOutput:self.output])
-        [self.session addOutput:self.output];
+    if ([self.session canAddOutput:outVideodata])
+        [self.session addOutput:outVideodata];
     
+    if ([self.session canAddOutput:outMetadata])
+        [self.session addOutput:outMetadata];
+
     [self.session commitConfiguration];
+    
+    // 保存Connection，用于在SampleBufferDelegate中判断数据来源（是Video/Audio？）
+    self.videoConnection = [outVideodata connectionWithMediaType:AVMediaTypeVideo];
+    self.videoConnection.videoMirrored = YES;
+    if ([self.videoConnection isVideoOrientationSupported]) {
+        self.videoConnection.videoOrientation = AVCaptureVideoOrientationPortrait;
+    }
+    
+    [outMetadata setMetadataObjectTypes:[NSArray arrayWithObjects:AVMetadataObjectTypeFace,nil]];
+    
+    // 抛弃过期帧
+    [outVideodata setAlwaysDiscardsLateVideoFrames:YES];
+    /*设置输出格式为
+     nv12 kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange       Y.../UV...
+     I420 kCVPixelFormatType_420YpCbCr8Planar                   Y.../U.../V...
+     rgba kCVPixelFormatType_32BGRA 
+     */
+    [outVideodata setVideoSettings:@{
+                                     (__bridge NSString *)kCVPixelBufferPixelFormatTypeKey:@(kCVPixelFormatType_32BGRA)
+                                     }];
+    
+    
+//    [_wrapper prepare];
     
     [self.session startRunning];
 
-    // 5.创建视频预览层，用于实时展示摄像头状态
-    _captureVideoPreviewLayer = [[AVCaptureVideoPreviewLayer alloc]initWithSession:self.session];
     CGFloat sizeX = ([UIScreen mainScreen].bounds.size.width - 60*2 );
     CGRect centerRect = CGRectMake(60, [UIScreen mainScreen].bounds.size.height / 4.0 * 3 - sizeX / 2.0, sizeX, sizeX);
-    _captureVideoPreviewLayer.frame = centerRect;
-    _captureVideoPreviewLayer.videoGravity = AVLayerVideoGravityResizeAspectFill;//填充模式
     
+    _displayLayer = [[AVSampleBufferDisplayLayer alloc] init];
+    _displayLayer.frame = centerRect;
+    _displayLayer.videoGravity = AVLayerVideoGravityResizeAspectFill;
+
     self.view.layer.masksToBounds = YES;
-    [self.view.layer insertSublayer:_captureVideoPreviewLayer below:self.scanPreviewView.layer];
+    [self.view.layer insertSublayer:_displayLayer above:self.scanPreviewView.layer];
+    
+    // 5.创建视频预览层，用于实时展示摄像头状态
+//    _captureVideoPreviewLayer = [[AVCaptureVideoPreviewLayer alloc]initWithSession:self.session];
+//    _captureVideoPreviewLayer.frame = centerRect;
+//    _captureVideoPreviewLayer.videoGravity = AVLayerVideoGravityResizeAspectFill;//填充模式
+//
+//    self.view.layer.masksToBounds = YES;
+//    [self.view.layer insertSublayer:_captureVideoPreviewLayer below:self.scanPreviewView.layer];
+    
+    
+   
+    
 }
 
 
@@ -315,7 +642,7 @@
     self.scanPreviewView.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.4];
     [self.view addSubview:self.scanPreviewView];
     
-    // MARK: roundRectanglePath
+    // MAR: roundRectanglePath
     CGFloat sizeX = ([UIScreen mainScreen].bounds.size.width - 60*2 );
     
     CGRect centerRect1 = CGRectMake(60, [UIScreen mainScreen].bounds.size.height / 4.0 - sizeX / 2.0, sizeX, sizeX);
