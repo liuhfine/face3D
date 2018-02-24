@@ -25,6 +25,7 @@ TransformationState;
 - (id)initWithDepth:(float)z Scale:(float)s Translation:(GLKVector2)t Rotation:(GLKVector3)r;
 - (void)start;
 - (void)scale:(float)s;
+- (float)getScaleStart;
 - (void)translate:(GLKVector2)t withMultiplier:(float)m;
 - (void)rotate:(GLKVector3)r withMultiplier:(float)m;
 - (GLKMatrix4)getModelViewMatrix;

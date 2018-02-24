@@ -15,7 +15,7 @@
 //#include <sys/time.h>
 #import <GLKit/GLKit.h>
 #import "shaders.h"
-#import "facegen.h"
+//#import "facegen.h"
 
 /**************************** renderers *******************************/
 #pragma mark - frame renderers

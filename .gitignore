@@ -20,6 +20,10 @@ DerivedData
 *.DS_Store
 *.zip
 *.rar
+*.a
+*.framework
+*.bin
+*.bundle
 
 # CocoaPods
 #

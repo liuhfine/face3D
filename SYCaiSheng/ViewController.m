@@ -8,20 +8,21 @@
 
 #import <AVFoundation/AVFoundation.h>
 #import <Accelerate/Accelerate.h>
-#import <ULSMultiTrackeriOSSDK/ULSMultiTrackeriOSSDK.h>
+#include <sys/sysctl.h>
+
 
 #import "ViewController.h"
 #import "SY3DObjView.h"
-#import "DlibWrapper.h"
+#import "SYCeresOC.h"
+
+
+//#import "DlibWrapper.h"
 
 
 #define Color [UIColor colorWithRed:237/255.0 green:82/255.0 blue:41/255.0 alpha:1]
 
-#define MAXFACES 5
+#define MAXFACES 1
 
-//Please put your activation key here
-#ifndef ACTIVE_KEY
-#define ACTIVE_KEY @"TIDI4knKR34fNRCznsAPnvDfnrntOMTp"
 #endif
 
 @interface ViewController ()
@@ -31,13 +32,40 @@
 >
 {
     SY3DObjView *_objView;
-    DlibWrapper *_wrapper;
+    
+    struct SYObjInfo _objInfo;
+    struct SYMorphVert *_morph;
+    
+    struct SYObjInfo _objInfo1;
+    struct SYMorphVert *_morph1;
+    
+    struct SYCeres *_ceres;
+    struct SYObjInfo _objInfo2;
+    
+    BOOL isObjLoadeEnd;
     
     
-    ULSMultiTrackeriOSSDK *_multiTrackerSDK;
     CGRect _faceRect[MAXFACES];
     int _faceRectCount;
     float _rollAngle[MAXFACES];
+    
+    CGSize _imageSize;
+    
+    unsigned int _pointCount;
+    
+    NSArray *feature;
+    int frameCount;
+    BOOL isApplyStablePose;     //Apply the pose stable function.
+    float facePoseQuality[MAXFACES];
+    const float *faceShapes[MAXFACES];
+    const float *faceShapes3D[MAXFACES];
+    const float *faceShapesQuality[MAXFACES];
+    const float *pupils[MAXFACES];
+    const float *gaze[MAXFACES];
+    unsigned int pointCount[MAXFACES];
+    float pose[MAXFACES*6];
+    float poseQuality[MAXFACES];
+    float headCenter3D[MAXFACES][3];
     
 }
 @property (nonatomic, strong) AVCaptureSession *session;
@@ -58,27 +86,41 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    
+
+    [self initConfig];
+
     [self createCamera];
+
     [self createScanPreviewView];
 
     [self create3DView];
+
+    [self initMultiFaceTracker];
     
 //    [self matrix];
+    
+}
+
+- (void)initConfig
+{
+    isObjLoadeEnd = NO;
+    isApplyStablePose = YES;
 }
 
 - (void)create3DView
 {
     CGFloat sizeX = ([UIScreen mainScreen].bounds.size.width - 60*2 );
     CGRect centerRect1 = CGRectMake(60, [UIScreen mainScreen].bounds.size.height / 4.0 - sizeX / 2.0, sizeX, sizeX);
-    
+
     _objView = [[SY3DObjView alloc] initWithFrame:centerRect1];
     [self.view insertSubview:_objView atIndex:0];
+    
+    [self reloadObjFileAndExpression72];
 }
 
 - (void)viewDidAppear:(BOOL)animated
 {
-    [_objView drawModelWithScale:1.0 X:0.0 Y:0.0];
+    [_objView drawModelWithScale:1.0 :0.0 :0.0 :0.0];
 }
 
 #pragma mark - userEvent
@@ -87,7 +129,108 @@
 
 - (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event {
     
-    [_objView drawModelWithScale:1.0 X:0.0 Y:0.0];
+//    [_objView drawModelWithScale:1.0 :0.0 :0.0 :0.0];
+    
+}
+
+#pragma mark - reload obj file
+- (void)reloadObjFileAndExpression72
+{
+    // load obj
+    NSString *objPath = [[NSBundle mainBundle] pathForResource:@"jixiangwu" ofType:@"obj"];
+
+    reload_objfile([objPath UTF8String], &_objInfo);
+
+    NSLog(@" vertexNum:%d -- %d %d %d", _objInfo.vertexNum, _objInfo.normalsNum, _objInfo.texCoordsNum, _objInfo.facesNum);
+
+    // opengl VBO
+    [_objView loadVertexForVBO:&_objInfo];
+    
+    // load expression_72
+    NSString *expression72 = [[NSBundle mainBundle] pathForResource:@"xiaoyu" ofType:@"txt"];
+
+    _morph = (struct SYMorphVert *) malloc(_objInfo.vertexNum * sizeof(struct SYMorphVert));
+
+    reload_objfile2([expression72 UTF8String], _morph, 36);
+    
+    /***********************************************************/
+    
+    NSString *objPath1 = [[NSBundle mainBundle] pathForResource:@"nomal_face" ofType:@"obj"];
+
+    reload_objfile([objPath1 UTF8String], &_objInfo1);
+
+    NSLog(@" vertexNum:%d -- %d %d %d", _objInfo1.vertexNum, _objInfo1.normalsNum, _objInfo1.texCoordsNum, _objInfo1.facesNum);
+
+    // load expression_72
+    NSString *expression721 = [[NSBundle mainBundle] pathForResource:@"nomal_face" ofType:@"txt"];
+
+    _morph1 = (struct SYMorphVert *) malloc(_objInfo1.vertexNum * sizeof(struct SYMorphVert));
+
+    reload_objfile2([expression721 UTF8String], _morph1, 36);
+
+    /***********************************************************/
+
+    isObjLoadeEnd = YES;
+
+//    struct SYCeres *ceres = (struct SYCeres *)malloc(sizeof(struct SYCeres));
+//    memset(ceres->fp, 0, sizeof(ceres->fp));
+//    ceres->fp[5] = 0.5f;ceres->fp[6] = 1.0f;
+//
+//    struct SYObjInfo *objinfo21 = [self updataObjDelta:ceres];
+//
+//    free(ceres);
+//
+//    [_objView updateExpressionWithVBO:objinfo21];
+    
+}
+
+- (struct SYObjInfo *)updataObjDelta:(struct SYCeres *)ceres
+{
+    if (!isObjLoadeEnd && ceres)
+        return nil;
+    
+    if (!_objInfo2.vertexs) {
+        _objInfo2.vertexNum = _objInfo.vertexNum;
+        _objInfo2.vertexs = (float *) malloc(_objInfo.vertexNum * 3 * sizeof(float));
+    }
+    
+    struct SYMorphVert *qweert = _morph;
+    
+    float ver[3] = {0,0,0};
+//    float ner[3] = {0,0,0};
+    
+    for (int i=0; i < _objInfo.vertexNum; i++) {
+        
+        _objInfo2.vertexs[3*i] = _objInfo.vertexs[3*i];
+        _objInfo2.vertexs[3*i + 1] = _objInfo.vertexs[3*i + 1];
+        _objInfo2.vertexs[3*i + 2] = _objInfo.vertexs[3*i + 2];
+        
+        for (int j=0; j<36; j++) {
+            
+            ver[0] += qweert->mv[j][0] * (ceres->fp[j] );
+            ver[1] += qweert->mv[j][1] * (ceres->fp[j] );
+            ver[2] += qweert->mv[j][2] * (ceres->fp[j] );
+            
+//            ner[0] += qweert->mn[j][0] * ceres->fp[j];
+//            ner[1] += qweert->mn[j][1] * ceres->fp[j];
+//            ner[2] += qweert->mn[j][2] * ceres->fp[j];
+        }
+        
+        _objInfo2.vertexs[3*i] += ver[0];
+        _objInfo2.vertexs[3*i + 1] += ver[1];
+        _objInfo2.vertexs[3*i + 2] += ver[2];
+        
+//        objinfo2->normals[3*i] = ner[0] + _objInfo.normals[3*i];
+//        objinfo2->normals[3*i + 1] = ner[1] + _objInfo.normals[3*i + 1];
+//        objinfo2->normals[3*i + 2] = ner[2] + _objInfo.normals[3*i + 2];
+        
+        memset(ver, 0, sizeof(ver));
+//        memset(ner, 0, sizeof(ner));
+        
+        qweert ++;
+    }
+    
+    return &_objInfo2;
 }
 
 # pragma mark - matrix
@@ -205,58 +348,58 @@
 {
     if (metadataObjects.count > 0) {
         
-        _currentMetadata = metadataObjects;
-
-//        for ( AVMetadataObject *object in metadataObjects ) {
-//
-//            if ( [object.type isEqual:AVMetadataObjectTypeFace] ) {
-//
-//                AVMetadataFaceObject* face = (AVMetadataFaceObject*)object;
-//                AVMetadataObject *convertedObject = [output transformedMetadataObjectForMetadataObject:face connection:connection];
-//                newFaceBounds =convertedObject.bounds;
-//                [boundsArray addObject:[NSValue valueWithCGRect:newFaceBounds]];
-//
-//                NSLog(@"---------xy:(%f,%f) wh:(%f,%f)",convertedObject.bounds.origin.x,convertedObject.bounds.origin.y,convertedObject.bounds.size.width,convertedObject.bounds.size.height);
-//
-//
+//        _currentMetadata = metadataObjects;
+        _faceRectCount = (int)(MIN([metadataObjects count], MAXFACES));
+        for (int k = 0; k < _faceRectCount; k++) {
+            AVMetadataFaceObject *face =    [metadataObjects objectAtIndex:k];
+            CGRect r = [face bounds];
+            CGSize sz = _imageSize;
+            
+//            if( ( _camera.orientation==AVCaptureVideoOrientationLandscapeLeft && isApplyingFrontCamera==YES )           // default front camera setting.
+//               || ( _camera.orientation==AVCaptureVideoOrientationLandscapeRight && isApplyingFrontCamera==NO ) )       // default back camera setting.
+//            {
+//                _rollAngle[k] = [face rollAngle] * M_PI/ 180;
+//                _faceRect[k] = CGRectMake(r.origin.x*sz.width,
+//                                          r.origin.y*sz.height,
+//                                          r.size.width*sz.width,
+//                                          r.size.height*sz.height);
 //            }
-//        }
+//            else if( ( _camera.orientation==AVCaptureVideoOrientationLandscapeRight && isApplyingFrontCamera==YES )
+//                    || ( _camera.orientation==AVCaptureVideoOrientationLandscapeLeft && isApplyingFrontCamera==NO ) )
+//            {
+//                _rollAngle[k] = ([face rollAngle] - 180) * M_PI/ 180;
+//                _faceRect[k] = CGRectMake((1-r.origin.x-r.size.width)*sz.width,
+//                                          (1-r.origin.y-r.size.height)*sz.height,
+//                                          r.size.width*sz.width,
+//                                          r.size.height*sz.height);
+//            }
+//            else if( _camera.orientation == AVCaptureVideoOrientationPortrait )
+//            {
+                _rollAngle[k] = ([face rollAngle] + 90) * M_PI/ 180;
+                _faceRect[k] = CGRectMake((1-r.origin.y-r.size.height)*sz.height,
+                                          r.origin.x*sz.width,
+                                          r.size.height*sz.height,
+                                          r.size.width*sz.width );
+//            }
+//            else if( _camera.orientation == AVCaptureVideoOrientationPortraitUpsideDown )
+//            {
+//                _rollAngle[k] = ([face rollAngle] - 90)* M_PI/ 180;
+//                _faceRect[k] = CGRectMake(r.origin.y*sz.height,
+//                                          (1-r.origin.x-r.size.width)*sz.width,
+//                                          r.size.height*sz.height,
+//                                          r.size.width*sz.width);
+//            }
+        }
     }
     else
     {
-        _currentMetadata = nil;
-//        if (_displayLayer.sublayers.count > 1)
-//        {
-//            CALayer *layer = [_displayLayer.sublayers lastObject];
-//            [layer removeFromSuperlayer];
-//        }
+//        _currentMetadata = nil;
+        _faceRectCount = 0;
+        for (int k = 0; k < MAXFACES; k++) {
+            _faceRect[k] = CGRectMake(-1, -1,-1,-1);
+        }
     }
     
-    
-//    if (metadataObjects.count > 0) {
-////        _currentMetadata = metadataObjects;
-//        AVMetadataMachineReadableCodeObject *metadataObject = [metadataObjects objectAtIndex :0];
-//        if (metadataObject.type == AVMetadataObjectTypeFace) {
-//
-//            NSMutableArray *arr = [NSMutableArray arrayWithCapacity:0];
-//
-//            for (AVMetadataObject *item in metadataObjects) {
-////
-//                AVMetadataObject *convertedObject = [output transformedMetadataObjectForMetadataObject:item connection:connection];
-////                NSValue *faceBounds = [NSValue valueWithCGRect:convertedObject.bounds];
-////
-////                CGRect rect = [faceBounds CGRectValue];
-//                AVMetadataFaceObject* face = (AVMetadataFaceObject*)item;
-//
-//
-//
-//
-//
-////                [arr addObject:faceBounds];
-//            }
-//            _currentMetadata = arr;
-//        }
-//    }
     
 }
 
@@ -265,23 +408,78 @@
 
 }
 
+
+
 - (void)captureOutput:(AVCaptureOutput *)output didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection
 {
  
-    CGRect newFaceBounds;
-    NSMutableArray *boundsArray = [[NSMutableArray alloc]init];
+    if (...) {
+        CVPixelBufferRef pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
+        
+        }
+        
+        if (active != 0)
+        {
+            if (isObjLoadeEnd)
+            {
+
+                if (!_ceres) {
+                    _ceres = (struct SYCeres *) malloc(sizeof(struct SYCeres));
+                }
+                
+                [SYCeresOC ceresFun:_ceres featurePoints:faceShapes[0] objVert:_objInfo1.vertexs expression72:_morph1];
+
+//                NSLog(@" ---------- %f  %f  %f",_ceres->ya[0],_ceres->ya[1],_ceres->ya[2]);
+//                NSLog(@" ---------- %f  %f  %f",pose[0],pose[1],pose[2]);
+                
+//                _ceres->fp[5] = 0.5f;_ceres->fp[6] = 1.0f;
+
+                dispatch_async(dispatch_get_main_queue(), ^{
+//                    [_objView drawModelWithScale:1.0 :_ceres->ya[0] :_ceres->ya[1] :_ceres->ya[2]];
+                    [_objView drawModelWithScale:1.0 :pose[0] :pose[1] :pose[2]];
+                    [_objView updateExpressionWithVBO:[self updataObjDelta:_ceres]];
+                });
+                
+//                gettimeofday(&t1, NULL);
+//
+//                ms = 1e3f * (t1.tv_sec - t0.tv_sec) + 1e-3f*(t1.tv_usec - t0.tv_usec);
+//
+//                printf(" --------- time:%fms \n",ms);
+                
+                
+            }
+        }
+        else
+            dispatch_sync(dispatch_get_main_queue(), ^{
+                [_objView drawModelWithScale:1.0 :0.0 :0.0 :0.0];
+            });
+        
+    }
     
-    NSArray *arr = _currentMetadata;
-    if (arr.count > 0) {
-
-        for ( AVMetadataObject *object in arr) {
-
-            if ( [[object type] isEqual:AVMetadataObjectTypeFace] ) {
-
-                AVMetadataFaceObject* face = (AVMetadataFaceObject*)object;
-                AVMetadataObject *convertedObject = [output transformedMetadataObjectForMetadataObject:face connection:connection];
-                newFaceBounds =convertedObject.bounds;
-                [boundsArray addObject:[NSValue valueWithCGRect:newFaceBounds]];
+//    [self grayWithData:sampleBuffer];
+    
+    if ([_displayLayer isReadyForMoreMediaData]) {
+        [_displayLayer enqueueSampleBuffer:sampleBuffer];
+    }
+    
+    
+    
+    /***********************************************************/
+    
+//    CGRect newFaceBounds;
+//    NSMutableArray *boundsArray = [[NSMutableArray alloc]init];
+//
+//    NSArray *arr = _currentMetadata;
+//    if (arr.count > 0) {
+//
+//        for ( AVMetadataObject *object in arr) {
+//
+//            if ( [[object type] isEqual:AVMetadataObjectTypeFace] ) {
+//
+//                AVMetadataFaceObject* face = (AVMetadataFaceObject*)object;
+//                AVMetadataObject *convertedObject = [output transformedMetadataObjectForMetadataObject:face connection:connection];
+//                newFaceBounds =convertedObject.bounds;
+//                [boundsArray addObject:[NSValue valueWithCGRect:newFaceBounds]];
 
 //                NSLog(@"---------xy:(%f,%f) wh:(%f,%f)",convertedObject.bounds.origin.x,convertedObject.bounds.origin.y,convertedObject.bounds.size.width,convertedObject.bounds.size.height);
                 
@@ -318,17 +516,15 @@
  
 */
 
-            }
-        }
+//            }
+//        }
 
 //        [_wrapper doWorkOnSampleBuffer:sampleBuffer inRects:boundsArray];
-    }
+//    }
     
-    if ([_displayLayer isReadyForMoreMediaData]) {
-        [_displayLayer enqueueSampleBuffer:sampleBuffer];
-    }
-    CVImageBufferRef imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
     
+
+
     /************/
 //    CVPixelBufferLockBaseAddress(imageBuffer,0);        // Lock the image buffer
 //
@@ -374,7 +570,14 @@
 
 }
 
+#pragma mark - faceTracker
+- (void)initMultiFaceTracker
+{
+ 
+}
 
+
+#pragma mark - videoDataTool
 /**
  获取样本格式信息
  */
@@ -495,6 +698,8 @@
     [session commitConfiguration];
 }
 
+#pragma mark - createCamera
+
 - (void)createCamera
 {
 //    _wrapper = [[DlibWrapper alloc] init];
@@ -576,6 +781,11 @@
 //    [_wrapper prepare];
     
     [self.session startRunning];
+    
+    AVCaptureDeviceFormat* format = [device activeFormat];
+    CMVideoDimensions dimensions = CMVideoFormatDescriptionGetDimensions([format formatDescription]);
+    _imageSize = CGSizeMake(dimensions.width, dimensions.height);
+    
 
     CGFloat sizeX = ([UIScreen mainScreen].bounds.size.width - 60*2 );
     CGRect centerRect = CGRectMake(60, [UIScreen mainScreen].bounds.size.height / 4.0 * 3 - sizeX / 2.0, sizeX, sizeX);

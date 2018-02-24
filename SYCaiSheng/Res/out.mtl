@@ -1,0 +1,40 @@
+newmtl initialShadingGroup
+illum 4
+Kd 1 1 1
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+Ni 1.00
+newmtl lambert5SG
+illum 4
+Kd 1 1 1
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd meimao.jpg
+Ni 1.00
+newmtl lambert7SG
+illum 4
+Kd 1 1 1
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+Ni 1.00
+newmtl lambert12SG
+illum 4
+Kd 1 1 1
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd tou.jpg
+Ni 1.00
+newmtl lambert13SG
+illum 4
+Kd 1 1 1
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+Ni 1.00
+map_Kd shenti.jpg
+newmtl lambert14SG
+illum 4
+Kd 1 1 1
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+Ni 1.00
+map_Kd YJ.jpg

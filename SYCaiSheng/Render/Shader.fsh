@@ -62,7 +62,8 @@ lowp vec3 modelColor(void)
 void main(void)
 {
     lowp vec3 color = modelColor();
-    gl_FragColor = vec4(color, 1.0);
+    
+    gl_FragColor = vec4(color, 1.0);//;
 }
 
 );

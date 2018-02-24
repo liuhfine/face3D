@@ -81,6 +81,11 @@
     _scaleEnd = s * _scaleStart;
 }
 
+- (float)getScaleStart
+{
+    return _scaleStart;
+}
+
 - (void)translate:(GLKVector2)t withMultiplier:(float)m
 {
     self.state = S_TRANSLATION;
@@ -101,11 +106,19 @@
     float dx = r.x - _rotationStart.x;
     float dy = r.y - _rotationStart.y;
     float dz = r.z - _rotationStart.z;
-    
+
     _rotationStart = GLKVector3Make(r.x, r.y, r.z);
-    _rotationEnd = GLKQuaternionMultiply(GLKQuaternionMakeWithAngleAndVector3Axis(dx*m, _up), _rotationEnd);
-    _rotationEnd = GLKQuaternionMultiply(GLKQuaternionMakeWithAngleAndVector3Axis(dy*m, _right), _rotationEnd);
+    
+//    _rotationEnd = GLKQuaternionMultiply(GLKQuaternionMakeWithAngleAndVector3Axis(dx*m, _right), _rotationEnd);
+//    _rotationEnd = GLKQuaternionMultiply(GLKQuaternionMakeWithAngleAndVector3Axis(dy*m, _up), _rotationEnd);
+//    _rotationEnd = GLKQuaternionMultiply(GLKQuaternionMakeWithAngleAndVector3Axis(-dz, _front), _rotationEnd);
+    
+    _rotationEnd = GLKQuaternionMultiply(GLKQuaternionMakeWithAngleAndVector3Axis(dx, _right), _rotationEnd);
+    _rotationEnd = GLKQuaternionMultiply(GLKQuaternionMakeWithAngleAndVector3Axis(dy, _up), _rotationEnd);
     _rotationEnd = GLKQuaternionMultiply(GLKQuaternionMakeWithAngleAndVector3Axis(-dz, _front), _rotationEnd);
+    
+//    _rotationEnd = GLKQuaternionMake(dx==0? r.x:_rotationEnd.x, dy==0? 0.0:_rotationEnd.y, dz==0? 0.0:_rotationEnd.z, _rotationEnd.w);
+
 }
 
 - (GLKMatrix4)getModelViewMatrix

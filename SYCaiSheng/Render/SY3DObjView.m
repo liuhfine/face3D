@@ -14,10 +14,10 @@
 #import "ShaderProcessor.h"
 #import "Transformations.h"
 
-#import "jixiangwuOBJ.h"
-#import "outMTL.h"
-#import "EyeBlink_L_new.h"
-#import "JawOpen_new.h"
+//#import "jixiangwuOBJ.h"
+//#import "outMTL.h"
+//#import "EyeBlink_L_new.h"
+//#import "JawOpen_new.h"
 
 #define STRINGIFY(A) #A
 #import "Shader.fsh"
@@ -46,6 +46,14 @@ struct UniformHandles
     GLint   uMode;
 };
 
+struct BOHandles
+{
+    GLuint vertexIndics;
+    GLuint vertexs;
+    GLuint normals;
+    GLuint textures;
+};
+
 @interface SY3DObjView()
 {
     // Render
@@ -68,7 +76,9 @@ struct UniformHandles
     
     struct AttributeHandles _attributes;
     struct UniformHandles   _uniforms;
+    struct BOHandles   _vbos;
     
+    BOOL isExpression;
 }
 @property (strong, nonatomic) EAGLContext* glContext;
 @property (strong, nonatomic) CAEAGLLayer *eaglLayer;
@@ -205,13 +215,14 @@ struct UniformHandles
     _modelViewMatrix = GLKMatrix4Identity;
     
     // Initialize Model Pose
-    self.transformations = [[Transformations alloc] initWithDepth:5.0f Scale:5.0f Translation:GLKVector2Make(0.0f, 0.0f) Rotation:GLKVector3Make(0.0f, 0.0f, 0.0f)];
+    self.transformations = [[Transformations alloc] initWithDepth:5.0f Scale:1.0f Translation:GLKVector2Make(0.0f, 0.0f) Rotation:GLKVector3Make(0.0f, 0.0f, 0.0f)];
+    [self.transformations start];
+    [self.transformations translate:GLKVector2Make(0.0f, 0.5f) withMultiplier:1.0f];
     
     // Load Texture
     [self loadTexture:@"meimao.jpg"];
     [self loadTexture:@"tou.jpg"];
     [self loadTexture:@"YJ.jpg"];
-
 
     // Create the GLSL program
     _program = [self.shaderProcessor BuildProgram:ShaderV with:ShaderF];
@@ -234,54 +245,11 @@ struct UniformHandles
     _uniforms.uTexture = glGetUniformLocation(_program, "uTexture");
     _uniforms.uMode = glGetUniformLocation(_program, "uMode");
     
-    // Attach Texture
-//    glUniform1i(_uniforms.uTexture, 0);
-//    glUniform1i(_uniforms.uTexture, 1);
-//    glUniform1i(_uniforms.uTexture, 2);
-    
-//    [self loadVertexForVBO:nil :nil :nil :nil];
-}
-
-- (void)loadVertexForVBO:(float *)vertexs :(float *)normals :(float *)colors :(int *)indexs
-{
-    float vertex[] = {
-        1.0, 0.0, 0.0,
-        0.0, 1.0, 0.0,
-        -0.7, -0.7, 0.0,
-        0.0, 0.0, 1.0,
-    };
-    
-    float index[] = {
-        1.0, 2.0, 3.0,
-        1.0, 2.0, 4.0,
-        2.0, 3.0, 4.0,
-        1.0, 3.0, 4.0,
-    };
-    
-    GLuint vertexbo;
-    // 创建顶点缓存对象
-    glGenBuffers(1, &vertexbo);
-    // 指定绑定的目标，取值为 GL_ARRAY_BUFFER（用于顶点数据） 或 GL_ELEMENT_ARRAY_BUFFER（用于索引数据）；
-    glBindBuffer(GL_ARRAY_BUFFER, vertexbo);
-    // 为顶点缓存对象分配空间 并将数据缓存
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertex), NULL, GL_STATIC_DRAW); //  + sizeof(normals) + sizeof(colors)
-    
-    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertex), vertex);
-//    glBufferSubData(GL_ARRAY_BUFFER, sizeof(vertexs), sizeof(normals), normals);
-//    glBufferSubData(GL_ARRAY_BUFFER, sizeof(vertexs) + sizeof(normals), sizeof(colors), colors);
-    
-    // index buffer object ibo fece 顶点索引
-    GLuint indexbo;
-    glGenBuffers(1, &indexbo);//创建ibobuffer
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexbo);//指定buffer类型
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(index), index, GL_STATIC_DRAW); //上传数据到buffer
-    
-//    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);//解除绑定
- 
 }
 
 - (void)loadTexture:(NSString *)fileName
 {
+
     NSDictionary* options = @{[NSNumber numberWithBool:YES] : GLKTextureLoaderOriginBottomLeft};
     
     NSError* error;
@@ -290,7 +258,7 @@ struct UniformHandles
     
     if(texture == nil)
         NSLog(@"Error loading file: %@", [error localizedDescription]);
-    
+   
     glActiveTexture(GL_TEXTURE0 + texture.name);
     glBindTexture(GL_TEXTURE_2D, texture.name);
 
@@ -298,6 +266,8 @@ struct UniformHandles
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    
+    glBindTexture(GL_TEXTURE_2D, 0);
     
     NSLog(@"glBindTexture id : %d", texture.name);
 }
@@ -315,14 +285,24 @@ struct UniformHandles
 }
 
 #pragma mark - reloadData
-static float rotationX;
-static int num = 0;
-- (void)drawModelWithScale:(CGFloat)scale X:(CGFloat)x Y:(CGFloat)y
+- (void)updateExpressionWithVBO:(struct SYObjInfo *)objInfo
 {
-    const float m = GLKMathDegreesToRadians(0.5f);
-    num += 1; // rotationX+=5
-    [self.transformations rotate:GLKVector3Make(0.0f, y, 0.0f) withMultiplier:m];
+    if (!_vbos.vertexs || !objInfo)
+        return;
     
+    isExpression = YES;
+    
+    glBindBuffer(GL_ARRAY_BUFFER, _vbos.vertexs);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, objInfo->vertexNum * 3 * sizeof(float), objInfo->vertexs);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+//    glBindBuffer(GL_ARRAY_BUFFER, _vbos.normals);
+//    glBufferSubData(GL_ARRAY_BUFFER, objInfo->vertexNum * 3 * sizeof(float), objInfo->normalsNum * 3 * sizeof(float), objInfo->normals);
+//    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    
+//    const float m = GLKMathDegreesToRadians(0.5f);
+//    [self.transformations rotate:GLKVector3Make( -roll*100, pitch * 140, yaw) withMultiplier:m]; // pitch, roll, yaw  -roll*100
+
     if (!self.window)
     {
         return;
@@ -333,7 +313,113 @@ static int num = 0;
     }
 }
 
+static int face_num;
+- (void)loadVertexForVBO:(struct SYObjInfo *)objInfo
+{
+    /*
+     GL_STATIC_DRAW：表示该缓存区不会被修改；
+     GL_DYNAMIC_DRAW：表示该缓存区会被周期性更改；
+     GL_STREAM_DRAW：表示该缓存区会被频繁更改；
+     
+     指定绑定的目标
+     GL_ARRAY_BUFFER（用于顶点数据）
+     GL_ELEMENT_ARRAY_BUFFER（用于索引数据）
+     */
+    
+    //    for (int i=0; i<objInfo->vertexNum; i++) {
+    //        printf("vertexNum:%d %f %f %f \n", i,
+    //               objInfo->vertexs[i * 3],
+    //               objInfo->vertexs[i * 3 + 1],
+    //               objInfo->vertexs[i * 3 + 2]);
+    //    }
+    
+    glGenBuffers(1, &_vbos.vertexIndics);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _vbos.vertexIndics);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, objInfo->facesNum * 3 * sizeof(short), objInfo->faceIndexs, GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    
+    glGenBuffers(1, &_vbos.vertexs);
+    glBindBuffer(GL_ARRAY_BUFFER, _vbos.vertexs);
+    glBufferData(GL_ARRAY_BUFFER, objInfo->vertexNum * 3 * sizeof(float), objInfo->vertexs, GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    
+    glGenBuffers(1, &_vbos.normals);
+    glBindBuffer(GL_ARRAY_BUFFER, _vbos.normals);
+    glBufferData(GL_ARRAY_BUFFER, objInfo->normalsNum * 3 * sizeof(float), objInfo->normals, GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    
+    glGenBuffers(1, &_vbos.textures);
+    glBindBuffer(GL_ARRAY_BUFFER, _vbos.textures);
+    glBufferData(GL_ARRAY_BUFFER, objInfo->texCoordsNum * 2 * sizeof(float), objInfo->texCoords, GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    
+    face_num = objInfo->facesNum;
+    
+}
+
+static float rotationX;
+static int num = 0;
+static float defaultScale = 0;
+
+- (void)drawModelWithScale:(CGFloat)scale :(CGFloat)pitch :(CGFloat)roll :(CGFloat)yaw
+{
+    const float m = GLKMathDegreesToRadians(0.5f);
+    num += 1; //
+    rotationX+=0.6;
+    
+    [self.transformations rotate:GLKVector3Make(pitch, -roll, yaw) withMultiplier:m];
+    
+
+//    [self.transformations rotate:GLKVector3Make(pitch / 3.1415*180, roll / 3.1415 * 180 - 180, yaw / 3.1415 * 180 - 180) withMultiplier:m];
+//    if (!defaultScale)
+//        defaultScale = scale;
+//    else {
+//        float ddd;
+//        if (defaultScale < 10.0) {
+//            [self.transformations scale: 1.0];
+//        }
+//
+//        if (defaultScale > 18.0) {
+//            [self.transformations scale: 1.0 / [self.transformations getScaleStart]];
+//        }
+//
+//        [self.transformations scale: ((defaultScale - scale + [self.transformations getScaleStart])/ [self.transformations getScaleStart])];
+//
+//        defaultScale = scale;
+//    }
+    
+    if (!isExpression) {
+        if (!self.window)
+        {
+            return;
+        }
+        @synchronized(self)
+        {
+            [self render];
+        }
+    }
+}
+
+int sy_outMTLFirst [5] = {
+    0,
+    576,
+    1152,
+    63330,
+    63906,
+};
+
+const int sy_outMTLCount [5] = {
+    576,
+    576,
+    62178,
+    576,
+    3996,
+};
+
 - (void)render {
+    
+    if (!face_num)
+        return;
     
     // Clear Buffers
     glClearColor(1.0, 1.0, 1.0, 1.0);
@@ -344,81 +430,61 @@ static int num = 0;
     glUniformMatrix4fv(_uniforms.uProjectionMatrix, 1, 0, _projectionMatrix.m);
     glUniformMatrix4fv(_uniforms.uModelViewMatrix, 1, 0, _modelViewMatrix.m);
     glUniformMatrix3fv(_uniforms.uNormalMatrix, 1, 0, _normalMatrix.m);
-//
-    
-    // Attach Texture
-//    glUniform1i(_uniforms.uTexture, 0);
     
     // Set View Mode
     glUniform1i(_uniforms.uMode, 1);
+
+    /* VBO 预加载顶点数据，存储至图形卡缓存上 */
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _vbos.vertexIndics);
     
-    /* Load OBJ Data 没使用VBO，每次渲染都从CPU拷贝顶点数据到GPU */
-    glVertexAttribPointer(_attributes.aVertex, 3, GL_FLOAT, GL_FALSE, 0, jixiangwuOBJVerts);
-    glEnableVertexAttribArray(_attributes.aVertex);
-
-    glVertexAttribPointer(_attributes.aNormal, 3, GL_FLOAT, GL_FALSE, 0, jixiangwuOBJNormals);
+    glBindBuffer(GL_ARRAY_BUFFER, _vbos.normals);
+    glVertexAttribPointer(_attributes.aNormal, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, 0);
     glEnableVertexAttribArray(_attributes.aNormal);
-
-    glVertexAttribPointer(_attributes.aTexture, 2, GL_FLOAT, GL_FALSE, 0, jixiangwuOBJTexCoords);
+    
+    glBindBuffer(GL_ARRAY_BUFFER, _vbos.textures);
+    glVertexAttribPointer(_attributes.aTexture, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, 0);
     glEnableVertexAttribArray(_attributes.aTexture);
     
-    if (num % 5 == 0) {
-        glDisableVertexAttribArray(_attributes.aDelta);
-        glVertexAttribPointer(_attributes.aDelta, 3, GL_FLOAT, GL_FALSE, 0, EyeBlink_L_new);
-        glEnableVertexAttribArray(_attributes.aDelta);
-    }
-    
-    if (num % 13 == 0)
-    {
-        glDisableVertexAttribArray(_attributes.aDelta);
-        glVertexAttribPointer(_attributes.aDelta, 3, GL_FLOAT, GL_FALSE, 0, JawOpen_new);
-        glEnableVertexAttribArray(_attributes.aDelta);
-    }
-
-    /* VBO 预加载顶点数据，存储至图形卡缓存上
-    glVertexAttribPointer(_attributes.aVertex, 3, GL_FLOAT, GL_FALSE, 0, 0);//顶点坐标起始位置
+    glBindBuffer(GL_ARRAY_BUFFER, _vbos.vertexs);
+    glVertexAttribPointer(_attributes.aVertex, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, 0);
     glEnableVertexAttribArray(_attributes.aVertex);
-//    glVertexAttribPointer(_attributes.aNormal, 3, GL_FLOAT, GL_FALSE, sizeof(facegenOBJVerts), 0);
-//    glEnableVertexAttribArray(_attributes.aNormal);
-//    glVertexAttribPointer(_attributes.aTexture, 2, GL_FLOAT, GL_FALSE, +sizeof(facegenOBJNormals), 0);
-//    glEnableVertexAttribArray(_attributes.aTexture);
-    */
+    
+    for (int i=0; i<5; i++) {
 
-    for(int i=0; i<outMTLNumMaterials; i++)
-    {
-        glUniform3f(_uniforms.uAmbient, outMTLAmbient[i][0], outMTLAmbient[i][1], outMTLAmbient[i][2]);
-        glUniform3f(_uniforms.uDiffuse, outMTLDiffuse[i][0], outMTLDiffuse[i][1], outMTLDiffuse[i][2]);
-        glUniform3f(_uniforms.uSpecular, outMTLSpecular[i][0], outMTLSpecular[i][1], outMTLSpecular[i][2]);
-        glUniform1f(_uniforms.uExponent, outMTLExponent[i]);
+//        glUniform3f(_uniforms.uAmbient, outMTLAmbient[i][0], outMTLAmbient[i][1], outMTLAmbient[i][2]);
+//        glUniform3f(_uniforms.uDiffuse, outMTLDiffuse[i][0], outMTLDiffuse[i][1], outMTLDiffuse[i][2]);
+//        glUniform3f(_uniforms.uSpecular, outMTLSpecular[i][0], outMTLSpecular[i][1], outMTLSpecular[i][2]);
+//        glUniform1f(_uniforms.uExponent, outMTLExponent[i]);
 
         if (i < 2) {
+            glActiveTexture(GL_TEXTURE0 + 1);
+            glBindTexture(GL_TEXTURE_2D, 1);
             glUniform1i(_uniforms.uTexture, 1);
         }
-        if (i == 3) {
+
+        if (i == 2) {
+            glActiveTexture(GL_TEXTURE0 + 2);
+            glBindTexture(GL_TEXTURE_2D, 2);
             glUniform1i(_uniforms.uTexture, 2);
         }
 
-        // Draw scene by material group
-        glDrawArrays(GL_TRIANGLES, outMTLFirst[i], outMTLCount[i]);
+        if (i > 2) {
+            glActiveTexture(GL_TEXTURE0 + 3);
+            glBindTexture(GL_TEXTURE_2D, 3);
+            glUniform1i(_uniforms.uTexture, 3);
+        }
+
+        glDrawElements(GL_TRIANGLES, sy_outMTLCount[i], GL_UNSIGNED_SHORT, (GLvoid*)(sizeof(short) * sy_outMTLFirst[i]));
+
     }
     
-//    glDrawElements(GL_TRIANGLES, 4, GL_UNSIGNED_BYTE, 0);
+//    glDrawElements(GL_TRIANGLES, face_num * 3, GL_UNSIGNED_SHORT, 0);
     
-    
-//    glDrawArrays(GL_TRIANGLES, 0, jixiangwuOBJNumVerts);
-    
-    // Disable Attributes
-    glDisableVertexAttribArray(_attributes.aVertex);
-    glDisableVertexAttribArray(_attributes.aNormal);
-    glDisableVertexAttribArray(_attributes.aTexture);
-    glDisableVertexAttribArray(_attributes.aDelta);
-    
-//    glBindBuffer(GL_ARRAY_BUFFER, 0);//解除VBO绑定
-//    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);//解除VBO绑定
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     
     glBindRenderbuffer(GL_RENDERBUFFER, _renderBuffer);
     [_glContext presentRenderbuffer:GL_RENDERBUFFER];
-    
     
 }
 
@@ -437,6 +503,8 @@ static int num = 0;
 - (void)dealloc
 {
     num = 0;
+    isExpression = NO;
+    
     if (_framebuffer) {
         glDeleteFramebuffers(1, &_framebuffer);
         _framebuffer = 0;
@@ -463,6 +531,55 @@ static int num = 0;
     
     _glContext = nil;
 }
+
+//    for(int i=0; i<outMTLNumMaterials; i++)
+//    {
+//
+//        if (i < 2) {
+//            glUniform1i(_uniforms.uTexture, 1);
+//        }
+//        if (i == 3) {
+//            glUniform1i(_uniforms.uTexture, 2);
+//        }
+//
+//        // Draw scene by material group
+//        glDrawArrays(GL_TRIANGLES, outMTLFirst[i], outMTLCount[i]);
+//    }
+
+//    glDrawElements(GL_TRIANGLES, 4, GL_UNSIGNED_BYTE, 0);
+
+
+//    glDrawArrays(GL_TRIANGLES, 0, jixiangwuOBJNumVerts);
+
+// Disable Attributes
+//    glDisableVertexAttribArray(_attributes.aVertex);
+//    glDisableVertexAttribArray(_attributes.aNormal);
+//    glDisableVertexAttribArray(_attributes.aTexture);
+//    glDisableVertexAttribArray(_attributes.aDelta);
+
+/* Load OBJ Data 没使用VBO，每次渲染都从CPU拷贝顶点数据到GPU
+ glVertexAttribPointer(_attributes.aVertex, 3, GL_FLOAT, GL_FALSE, 0, jixiangwuOBJVerts);
+ glEnableVertexAttribArray(_attributes.aVertex);
+ 
+ glVertexAttribPointer(_attributes.aNormal, 3, GL_FLOAT, GL_FALSE, 0, jixiangwuOBJNormals);
+ glEnableVertexAttribArray(_attributes.aNormal);
+ 
+ glVertexAttribPointer(_attributes.aTexture, 2, GL_FLOAT, GL_FALSE, 0, jixiangwuOBJTexCoords);
+ glEnableVertexAttribArray(_attributes.aTexture);
+ 
+ if (num % 5 == 0) {
+ glDisableVertexAttribArray(_attributes.aDelta);
+ glVertexAttribPointer(_attributes.aDelta, 3, GL_FLOAT, GL_FALSE, 0, EyeBlink_L_new);
+ glEnableVertexAttribArray(_attributes.aDelta);
+ }
+ 
+ if (num % 13 == 0)
+ {
+ glDisableVertexAttribArray(_attributes.aDelta);
+ glVertexAttribPointer(_attributes.aDelta, 3, GL_FLOAT, GL_FALSE, 0, JawOpen_new);
+ glEnableVertexAttribArray(_attributes.aDelta);
+ }
+ */
 
 /*
 // Only override drawRect: if you perform custom drawing.
